@@ -125,7 +125,8 @@ def at_hospital(hospital: str, include_sub: bool = False) -> list[Protocol]:
 def outline_of(p: Protocol, limit: int = 150) -> list[dict]:
     if len(p.outline) >= 8:
         items = [o for o in p.outline if o.get("depth", 0) <= 1] or p.outline
-        return [{"title": o["title"], "page": o["page"]} for o in items[:limit]]
+        return [{"title": o["title"], "page": o["page"], **({"summary": o["summary"]} if o.get("summary") else {})}
+                for o in items[:limit]]
     toc = toc_of(p, limit)
     if len(toc) >= 8:
         return toc
