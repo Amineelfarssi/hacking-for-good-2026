@@ -7,9 +7,10 @@ hospital UZG, all protocols ticked, sub-protocols off.
 2. **Tier 1 filter (20 s).** Switch hospital UZG → UZA: the list drops from 27 to 21 (no BEACON2, no HR-NBL2).
    Back to UZG.
 3. **Clarifying question (40 s).** Ask Q4: "I have a patient with 150 000 WBC, what are the next steps?"
-   The assistant asks AML or ALL. Answer "AML". It searches CHIP-AML22 and answers with page citations.
+   The assistant shows a clarify card (ALL / AML / infant ALL). Click "AML — CHIP-AML22". It searches CHIP-AML22
+   and answers with page citations, thresholds in a criteria card.
 4. **Cited page (40 s).** Ask Q3 (FaR-RMS staging investigations). Click a citation chip: the PDF opens on that
-   page in the right panel. Point at the sentence.
+   page in the right panel with the cited sentence highlighted in yellow. Point at it.
 5. **Deep search (30 s).** Ask Q7 (ALLTogether1 stroke-like event). It answers from the master protocol and offers
    the sub-protocols; say yes; it reads the Thrombosis guideline and adds LMWH / antithrombin with pages.
 6. **Refusal (15 s).** Ask Q5 (65-year-old antihypertensive). It refuses, no medical content.
