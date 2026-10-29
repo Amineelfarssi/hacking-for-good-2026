@@ -14,6 +14,12 @@ hospital UZG, all protocols ticked, sub-protocols off, Decision flow drawer clos
 5. **Deep search (30 s).** Ask "ALLTogether1 patient with a stroke-like event: causes and treatment?" It answers from
    the master protocol and offers the sub-protocols; say yes; it reads the Thrombosis guideline and adds LMWH /
    antithrombin with pages. Decision flow shows "Deep dive taken".
+5b. **Frontier: collisions (40 s).** Ask "My ALLTogether1 patient has fever and neutropenia during induction.
+   What does the protocol say, and is there external guidance that could collide with it?" Protocol block first,
+   then the labelled external block: the 2023 paediatric febrile-neutropenia guideline (PubMed), ECIL-8 (web),
+   and the vincristine FDA label that contraindicates azoles — a real collision, with "the protocol prevails".
+   Decision flow shows "External evidence consulted". Genetics work the same way (CPIC: TPMT/NUDT15 for
+   mercaptopurine; ClinVar; NCBI Gene).
 6. **Refusal (15 s).** Ask the 65-year-old antihypertensive question. Refused, no medical content; the flow shows the
    red branch.
 7. **Admin (15 s).** Admin tab: upload a PDF as "amendment", tick UZG, submit. Searchable immediately, no re-indexing.
