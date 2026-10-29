@@ -1,34 +1,64 @@
 import type { Protocol } from "@/lib/protocols";
 
-/** `[CHIP-AML22 v2.2, p. 91, §Hyperleukocytosis]` as the agent writes it. */
-export const CITATION_RE = /\[([^\]]+?), p\. (\d+)(?:, §([^\]]+))?\]/g;
+/**
+ * A citation as the agent writes it: `[Doc vX, p. N, §Section]`. The version and the § part are optional,
+ * a page may be a range (`p. 67–68`, `pp. 91-92`), and one bracket may hold several pages separated by `;`:
+ * `[FaR-RMS v2.0c, p. 68, §10.1; p. 108, §18]`.
+ */
+export const CITATION_RE = /\[([^\]]+?),\s*(p{1,2}\.\s*\d+[^\]]*)\]/g;
+const SEGMENT_RE = /p{1,2}\.\s*(\d+)(?:\s*[–-]\s*(\d+))?(?:\s*,\s*§\s*([^;]+))?/g;
 
 export type Citation = {
-  /** The raw text inside the brackets. */
+  /** The whole bracket this citation came from. */
   raw: string;
   /** Document label as written, e.g. "CHIP-AML22 v2.2". */
   doc: string;
+  /** First page of the cited range. */
   page: number;
+  pageEnd?: number;
   section?: string;
 };
 
-export function parseCitations(text: string): Citation[] {
+function parseSegments(raw: string, doc: string, tail: string): Citation[] {
   const out: Citation[] = [];
-  for (const m of text.matchAll(CITATION_RE)) {
-    out.push({ raw: m[0], doc: m[1].trim(), page: Number(m[2]), section: m[3]?.trim() });
+  for (const m of tail.matchAll(SEGMENT_RE)) {
+    out.push({
+      raw,
+      doc,
+      page: Number(m[1]),
+      pageEnd: m[2] ? Number(m[2]) : undefined,
+      section: m[3]?.trim() || undefined,
+    });
   }
   return out;
 }
 
+export function parseCitations(text: string): Citation[] {
+  const out: Citation[] = [];
+  for (const m of text.matchAll(CITATION_RE)) out.push(...parseSegments(m[0], m[1].trim(), m[2]));
+  return out;
+}
+
+export function citationLabel(c: Citation): string {
+  const pages = c.pageEnd ? `pp. ${c.page}–${c.pageEnd}` : `p. ${c.page}`;
+  return `${c.doc}, ${pages}${c.section ? `, §${c.section}` : ""}`;
+}
+
 /**
- * Replace each citation with a markdown link `[label](cite:N)`; the renderer turns
- * those into chips. N indexes the returned citations array.
+ * Replace each citation with markdown links `[label](cite:N)`, one per cited page; the renderer turns them
+ * into chips. N indexes the returned citations array.
  */
 export function linkifyCitations(text: string): { markdown: string; citations: Citation[] } {
   const citations: Citation[] = [];
-  const markdown = text.replace(CITATION_RE, (raw, doc: string, page: string, section?: string) => {
-    const i = citations.push({ raw, doc: doc.trim(), page: Number(page), section: section?.trim() }) - 1;
-    return `[${raw.slice(1, -1).replace(/\]/g, "")}](cite:${i})`;
+  const markdown = text.replace(CITATION_RE, (raw, doc: string, tail: string) => {
+    const segs = parseSegments(raw, doc.trim(), tail);
+    if (segs.length === 0) return raw;
+    return segs
+      .map((c) => {
+        const i = citations.push(c) - 1;
+        return `[${citationLabel(c).replace(/[\[\]]/g, "")}](cite:${i})`;
+      })
+      .join(" ");
   });
   return { markdown, citations };
 }

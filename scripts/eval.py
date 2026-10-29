@@ -50,7 +50,16 @@ async def main(only: set[str]) -> None:
         state = {"hospital": "UZG", "protocol_ids": [], "include_subprotocols": bool(row.get("include_subprotocols"))}
         session = await runner.session_service.create_session(app_name="eval", user_id="eval", state=state)
         t0 = time.time()
-        answer, tools = await ask(runner, session.id, row["q"])
+        for attempt in range(3):  # the lab project has a small tokens-per-minute quota
+            try:
+                answer, tools = await ask(runner, session.id, row["q"])
+                break
+            except Exception as e:  # noqa: BLE001
+                if "429" not in str(e) or attempt == 2:
+                    answer, tools = f"ERROR: {type(e).__name__}: {str(e)[:300]}", []
+                    break
+                print(f"{row['id']}: rate limited, waiting 45 s (attempt {attempt + 1})")
+                await asyncio.sleep(45)
         dt = time.time() - t0
         cites = len(CITE.findall(answer))
         print(f"{row['id']:4} {dt:5.1f}s  {cites:2} cites  {len(tools):2} tool calls  {row['q'][:60]}")

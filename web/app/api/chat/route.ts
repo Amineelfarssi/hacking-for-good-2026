@@ -141,7 +141,7 @@ async function forwardAdkEvents(upstream: ReadableStream<Uint8Array>, send: (e: 
     const parts = ev.content?.parts ?? [];
     for (const part of parts) {
       if (part.functionCall) {
-        send({ type: "status", text: `Searching protocols… (${part.functionCall.name ?? "tool"})` });
+        send({ type: "status", text: statusFor(part.functionCall.name) });
         streamed = "";
       } else if (part.functionResponse) {
         send({ type: "status", text: "Reading results…" });
@@ -183,6 +183,17 @@ async function forwardAdkEvents(upstream: ReadableStream<Uint8Array>, send: (e: 
       }
     }
   }
+}
+
+/** What the user sees while a tool runs; the tool name itself is the fallback. */
+const TOOL_STATUS: Record<string, string> = {
+  list_protocols: "Checking which protocols apply…",
+  get_outline: "Reading the protocol outline…",
+  search_pages: "Searching protocol pages…",
+  read_pages: "Reading the cited pages…",
+};
+function statusFor(tool?: string): string {
+  return (tool && TOOL_STATUS[tool]) || `Searching protocols… (${tool ?? "tool"})`;
 }
 
 /** Generic, patient-free answer in the agent's own citation format, streamed word by word. */
