@@ -14,17 +14,112 @@ No patient data, no PII: the corpus is protocols and guidelines, every case is a
 
 ## Architecture
 
-```
-27 master protocols + 5 ALLTogether1 sub-protocols (PDF)
-   └─ scripts/build_manifest.py  → data/uc1/manifest.jsonl  (id, titles, kind, hospitals, version)
-   └─ scripts/ingest.py          → GCS bucket → Vertex AI Search datastore (layout parser, page chunks, metadata)
+### System view (Google Cloud, lab project)
 
-Clinician ─ web/ (Next.js: Sources panel · Chat · Source viewer · Admin)
-              └─ /api/chat ──SSE──▶ adk api_server (app/)  ── Gemini on Vertex AI
-                                        ├─ list_protocols(hospital)            Tier 1: hospital filter
-                                        └─ search_protocols(query, ids, subs)  Tier 2: selected protocols,
-                                                                               chunks with page numbers
+```mermaid
+flowchart LR
+    subgraph Users
+        C[Clinician / researcher]
+        A[Admin]
+    end
+    subgraph GCP["Google Cloud · europe-west1"]
+        WEB["Cloud Run · web<br/>Next.js 16 (standalone)"]
+        API["Cloud Run · api<br/>FastAPI + ADK agent API"]
+        BKT[("Cloud Storage<br/>corpus bucket: manifest, page text, PDFs")]
+        AE["Vertex AI Agent Engine<br/>same agent as a managed runtime"]
+        AR[("Artifact Registry<br/>api:v1 · web:v1")]
+        CB["Cloud Build"]
+        EV["Vertex AI Gen AI Evaluation Service"]
+    end
+    subgraph Models["Vertex AI · global endpoint"]
+        ARGON["Gemini 4 Argon<br/>agent reasoning, thinking=low"]
+        FLASH["Gemini 3.8 Flash<br/>section summaries · judge"]
+    end
+    C -->|HTTPS| WEB
+    A -->|Admin tab: upload PDF| WEB
+    WEB -->|"/api/* proxies (SSE)"| API
+    API -->|copy at start · write-back on upload| BKT
+    API -->|generateContent| ARGON
+    AE -->|reads manifest + page text| BKT
+    AE --> ARGON
+    CB -->|push| AR --> WEB
+    AR --> API
+    EV -.->|scores answers vs cited pages| FLASH
+    FLASH -.->|one-line summary per section| BKT
 ```
+
+### Application view
+
+```mermaid
+flowchart TB
+    subgraph Browser["web/ · Next.js app"]
+        SRC["Sources panel<br/>hospital (Tier 1) · protocol tick-list (Tier 2) · deep search"]
+        CHAT["Chat<br/>lead + details · criteria & clarify cards · citation chips · thumbs"]
+        VIEW["Source viewer<br/>page image with the cited passage highlighted"]
+        TRAIL["Trail + Decision flow<br/>live walk: protocol → sections → pages"]
+        ADM["Admin<br/>upload PDF · hospitals · instant extraction"]
+    end
+    subgraph Routes["web/app/api · thin proxies"]
+        R1["/api/chat (SSE, session state = selection)"]
+        R2["/api/protocols"]
+        R3["/api/page/{id}/{n}?q= · /api/pdf"]
+        R4["/api/admin/upload · /api/feedback"]
+    end
+    subgraph Server["app/server.py · FastAPI on port 8000"]
+        ADK["ADK runtime<br/>/apps · /run_sse · sessions"]
+        AG["root_agent (app/agent.py)<br/>prompt: scope · clarify · cite · refuse"]
+        T1["list_protocols"]
+        T2["get_outline (+ summaries)"]
+        T3["search_pages (regex, grouped by section)"]
+        T4["read_pages (budget 6/turn)"]
+        HL["highlight.py<br/>exact → fuzzy → neighbour page"]
+        CP["corpus.py<br/>manifest.jsonl + pages/*.json"]
+    end
+    SRC --> R1 & R2
+    CHAT --> R1
+    VIEW --> R3
+    TRAIL --> R1
+    ADM --> R4
+    R1 --> ADK --> AG
+    AG --> T1 & T2 & T3 & T4
+    T1 & T2 & T3 & T4 --> CP
+    R2 --> CP
+    R3 --> HL --> CP
+    R4 --> CP
+    AG -->|Gemini 4 Argon| GEM[(Vertex AI)]
+```
+
+### AI solution flow (one question)
+
+```mermaid
+flowchart TD
+    Q["Clinician question<br/>+ session state: hospital, selected protocols, deep search"]
+    S{In scope?<br/>paediatric haemato-oncology}
+    REF["Refuse<br/>'I cannot answer…' · no medical content"]
+    CL{Enough to answer?<br/>patient described and protocol / risk group / age missing?}
+    CARD["Clarify card<br/>2–4 options · stop"]
+    LP["list_protocols → scope"]
+    SP["search_pages (synonym regex)<br/>→ sections_with_hits, top pages"]
+    PLAN["Plan: every section that can hold part of the answer"]
+    RP["read_pages per section<br/>(≤ 6 reads, each section once)"]
+    DD{Sub-protocols relevant<br/>and not in scope?}
+    OFFER["Offer the deep dive;<br/>on yes: read the guideline in full"]
+    ANS["Answer<br/>direct sentence → criteria card / bullets<br/>every fact: [Short title vX, p. N, §section]"]
+    UI["UI: chips → highlighted page · trail · decision flow · feedback"]
+    EVAL["Eval: rules + Gemini judge (SCORECARD) ·<br/>Vertex AI evaluation (QA quality, grounding, completeness)"]
+    Q --> S
+    S -- no --> REF
+    S -- yes --> CL
+    CL -- missing fact --> CARD --> Q
+    CL -- yes --> LP --> SP --> PLAN --> RP --> DD
+    DD -- yes --> OFFER --> ANS
+    DD -- no --> ANS
+    ANS --> UI
+    ANS -.-> EVAL
+```
+
+No vector index: retrieval is the agent's own navigation (outline with summaries, section-grouped search, page reads),
+so every citation is the PDF page the text came from, and the UI can show the walk live.
 
 ## Run
 
