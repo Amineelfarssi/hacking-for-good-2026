@@ -1,5 +1,6 @@
 import type { Protocol } from "@/lib/protocols";
 import type { TrailEvent } from "@/lib/trail";
+import type { AnswerScope } from "@/lib/decision-flow";
 
 export type ViewerTarget = {
   protocol: Protocol;
@@ -24,4 +25,6 @@ export type ChatMessage = {
   trail?: TrailEvent[];
   startedAt?: number;
   finishedAt?: number;
+  /** The selection the question was asked against. */
+  scope?: AnswerScope;
 };

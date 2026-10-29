@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Loader2, RotateCcw, SendHorizontal, ThumbsDown, ThumbsUp } from "lucide-react";
+import { GitBranch, Loader2, RotateCcw, SendHorizontal, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11,6 +11,7 @@ import { streamChat } from "@/lib/chat-stream";
 import type { Citation } from "@/lib/citations";
 import { AnswerBody } from "./answer-body";
 import { Trail } from "./trail";
+import { DecisionFlowDrawer } from "./decision-flow";
 import type { ChatMessage } from "./types";
 
 const EXAMPLES = [
@@ -27,14 +28,19 @@ type Props = {
   onOpenCitation: (c: Citation) => void;
   onOpenPage: (protocolId: string, page: number) => void;
   onNewConversation: () => void;
+  /** Bumped by the header's "Decision flow" button: opens the drawer for the latest answer. */
+  flowSignal: number;
 };
 
-export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpenCitation, onOpenPage, onNewConversation }: Props) {
+export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpenCitation, onOpenPage, onNewConversation, flowSignal }: Props) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [mock, setMock] = useState(false);
+  // Drawer state without effects: open when the header signal is newer than the last close, or an answer was picked.
+  const [flow, setFlow] = useState<{ closedAt: number; messageId: string | null }>({ closedAt: 0, messageId: null });
+  const flowOpen = flowSignal > flow.closedAt || flow.messageId !== null;
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -63,7 +69,16 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
       setMessages((prev) => [
         ...prev,
         userMsg,
-        { id: assistantId, role: "assistant", content: "", streaming: true, status: "Searching protocols…", trail: [], startedAt: Date.now() },
+        {
+          id: assistantId,
+          role: "assistant",
+          content: "",
+          streaming: true,
+          status: "Searching protocols…",
+          trail: [],
+          startedAt: Date.now(),
+          scope: { hospital, protocolCount: protocolIds.length, includeSubs },
+        },
       ]);
       setDraft("");
       setBusy(true);
@@ -131,6 +146,12 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
   );
 
   const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+  const flowMessage = messages.find((m) => m.id === (flow.messageId ?? lastAssistantId)) ?? null;
+  const questionFor = (m: ChatMessage | null) => {
+    if (!m) return undefined;
+    const idx = messages.findIndex((x) => x.id === m.id);
+    return [...messages.slice(0, idx)].reverse().find((x) => x.role === "user")?.content;
+  };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey) && !e.nativeEvent.isComposing) {
@@ -141,6 +162,14 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <DecisionFlowDrawer
+        open={flowOpen}
+        onOpenChange={(o) => {
+          if (!o) setFlow({ closedAt: flowSignal, messageId: null });
+        }}
+        message={flowMessage}
+        question={questionFor(flowMessage)}
+      />
       <div className="flex h-10 shrink-0 items-center gap-2 pl-4 pr-2">
         <h2 className="text-sm font-medium leading-6 text-ink">Assistant</h2>
         <p className="min-w-0 truncate text-xs text-ink-faint">
@@ -203,6 +232,7 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
                       <div className="mt-1 flex items-center gap-0.5">
                         <VoteButton label="Helpful" active={m.vote === "up"} onClick={() => void vote(m, "up")} icon={<ThumbsUp />} />
                         <VoteButton label="Not helpful" active={m.vote === "down"} onClick={() => void vote(m, "down")} icon={<ThumbsDown />} />
+                        <VoteButton label="Decision flow" active={false} onClick={() => setFlow((f) => ({ ...f, messageId: m.id }))} icon={<GitBranch />} />
                       </div>
                     )}
                   </div>
