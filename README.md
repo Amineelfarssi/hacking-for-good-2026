@@ -12,6 +12,13 @@ says which of the 6 Belgian centres run which protocol) and the clinician's own 
 
 No patient data, no PII: the corpus is protocols and guidelines, every case is a synthetic vignette.
 
+## Live
+
+- App: https://oncoprotocol-web-7335133887.europe-west1.run.app (Cloud Run, lab project; public for the hackathon)
+- Agent API: https://oncoprotocol-api-7335133887.europe-west1.run.app
+- Agent Engine runtime: `projects/7335133887/locations/europe-west1/reasoningEngines/4051481545540632576`
+- Demo video: [`docs/demo-video/oncoprotocol-assist-demo.mp4`](docs/demo-video/oncoprotocol-assist-demo.mp4) (68 s) · [teaser](docs/demo-video/teaser.mp4) (33 s)
+
 ## Architecture
 
 A friendly six-picture explainer of the solution: [`docs/explainer.html`](docs/explainer.html) (open it in a browser).
