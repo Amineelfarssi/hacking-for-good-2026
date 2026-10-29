@@ -17,7 +17,36 @@ export type Citation = {
   page: number;
   pageEnd?: number;
   section?: string;
+  /** The sentence that precedes the citation in the answer (markdown stripped), for the page highlighter. */
+  context?: string;
 };
+
+/** Plain text of a markdown fragment: emphasis, code, headings, list markers, links and other citations removed. */
+export function stripMarkdown(md: string): string {
+  return md
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(CITATION_RE, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s*(?:[-*+]|\d+[.)])\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/[*_`#]+/g, "")
+    .replace(/\|/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The sentence that ends right before `offset` in the answer, at most 600 characters. */
+export function sentenceBefore(text: string, offset: number): string {
+  const before = stripMarkdown(text.slice(Math.max(0, offset - 1500), offset));
+  const parts = before.split(/(?<=[.!?:;])\s+/).filter((s) => s.trim().length > 0);
+  let out = parts.pop() ?? "";
+  // A very short tail ("MRI is recommended") is widened by one sentence so the highlighter has enough to match.
+  if (out.length < 40 && parts.length) out = `${parts.pop()} ${out}`;
+  return out.replace(/[\s,;:(]+$/g, "").slice(-600).trim();
+}
 
 function parseSegments(raw: string, doc: string, tail: string): Citation[] {
   const out: Citation[] = [];
@@ -50,12 +79,13 @@ export function citationLabel(c: Citation): string {
  */
 export function linkifyCitations(text: string): { markdown: string; citations: Citation[] } {
   const citations: Citation[] = [];
-  const markdown = text.replace(CITATION_RE, (raw, doc: string, tail: string) => {
+  const markdown = text.replace(CITATION_RE, (raw, doc: string, tail: string, offset: number) => {
     const segs = parseSegments(raw, doc.trim(), tail);
     if (segs.length === 0) return raw;
+    const context = sentenceBefore(text, offset);
     return segs
       .map((c) => {
-        const i = citations.push(c) - 1;
+        const i = citations.push({ ...c, context }) - 1;
         return `[${citationLabel(c).replace(/[\[\]]/g, "")}](cite:${i})`;
       })
       .join(" ");

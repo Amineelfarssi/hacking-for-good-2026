@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { streamChat } from "@/lib/chat-stream";
 import type { Citation } from "@/lib/citations";
-import { AnswerMarkdown } from "./answer-markdown";
+import { AnswerBody } from "./answer-body";
 import type { ChatMessage } from "./types";
 
 const EXAMPLES = [
@@ -124,6 +124,8 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
     [messages, patch, sessionId, toast],
   );
 
+  const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
@@ -164,7 +166,14 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
                 ) : (
                   <div className="w-full max-w-[95%] animate-fade-up">
                     <div className="rounded-2xl rounded-bl-md border border-line bg-white px-4 py-3">
-                      {m.content && <AnswerMarkdown text={m.content} onOpenCitation={onOpenCitation} />}
+                      {m.content && (
+                        <AnswerBody
+                          text={m.content}
+                          onOpenCitation={onOpenCitation}
+                          onSend={(t) => void send(t)}
+                          cardsDisabled={busy || m.id !== lastAssistantId}
+                        />
+                      )}
                       {m.status && (
                         <p className="flex items-center gap-2 text-sm text-ink-faint">
                           <Loader2 className="size-4 animate-spin" />
