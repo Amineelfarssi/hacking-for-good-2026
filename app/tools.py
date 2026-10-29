@@ -95,3 +95,31 @@ def get_drug_label(drug: str) -> dict:
         return external.drug_label(drug)
     except Exception as e:  # noqa: BLE001
         return {"drug": drug, "found": False, "error": f"openFDA unavailable: {type(e).__name__}"}
+
+
+def get_gene_info(symbol: str) -> dict:
+    """EXTERNAL (NCBI Gene): what a gene / biomarker is (official name, location, summary) — for MYCN, PAX3-FOXO1
+    partners, KMT2A, TPMT, NUDT15, TP53 … mentioned in the question or the protocol. Tag: [NCBI Gene: SYMBOL]."""
+    try:
+        return external.gene_info(symbol)
+    except Exception as e:  # noqa: BLE001
+        return {"symbol": symbol, "found": False, "error": f"NCBI unavailable: {type(e).__name__}"}
+
+
+def get_pharmacogenomics(drug_or_gene: str) -> dict:
+    """EXTERNAL (CPIC): gene–drug pairs with CPIC level and guideline link, for a drug (mercaptopurine, thioguanine,
+    ondansetron, voriconazole, …) or a gene (TPMT, NUDT15, CYP2D6, DPYD). Use for every protocol drug with known
+    pharmacogenomic dosing when the clinician asks about genetics, toxicity or dose. Tag: [CPIC: GENE–drug]."""
+    try:
+        return external.pharmacogenomics(drug_or_gene)
+    except Exception as e:  # noqa: BLE001
+        return {"query": drug_or_gene, "found": False, "error": f"CPIC unavailable: {type(e).__name__}"}
+
+
+def search_clinvar(query: str) -> dict:
+    """EXTERNAL (ClinVar): clinical significance of a named variant or gene–condition pair (e.g. "TPMT*3A",
+    "TP53 Li-Fraumeni", "NUDT15 c.415C>T"). Tag: [ClinVar: <id>]. Never for patient identification."""
+    try:
+        return external.clinvar_search(query)
+    except Exception as e:  # noqa: BLE001
+        return {"query": query, "found": False, "error": f"ClinVar unavailable: {type(e).__name__}"}

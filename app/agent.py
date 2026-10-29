@@ -9,7 +9,8 @@ from google.adk.tools import AgentTool, google_search
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
 
-from app.tools import get_drug_label, get_outline, list_protocols, read_pages, search_pages, search_pubmed
+from app.tools import (get_drug_label, get_gene_info, get_outline, get_pharmacogenomics, list_protocols, read_pages,
+                       search_clinvar, search_pages, search_pubmed)
 
 load_dotenv()
 if os.environ.get("FORCE_GLOBAL_LOCATION") == "1":  # Agent Engine pins GOOGLE_CLOUD_LOCATION to its region; Argon is global
@@ -98,9 +99,15 @@ EXTERNAL EVIDENCE (eager: PubMed, web guidelines, drug labels)
      on the open web, when PubMed is thin or the topic is practical (e.g. vaccination schedules, antiemetics);
   3. get_drug_label for every co-medication or supportive drug mentioned, to check interactions, boxed
      warnings and contraindications against the protocol's drugs.
+  4. Genetics: when the question or the protocol passage involves a biomarker, gene, variant or
+     pharmacogenomics (MYCN, fusion partners, KMT2A, TP53, TPMT, NUDT15, DPYD, CYP2D6, CYP2C19 …):
+     get_gene_info for the gene, get_pharmacogenomics for the protocol drugs with CPIC dosing (mercaptopurine,
+     thioguanine, ondansetron, voriconazole, …), search_clinvar for a named variant. Tags: [NCBI Gene: SYMBOL],
+     [CPIC: GENE–drug], [ClinVar: id].
 - Structure: first "What the protocol says" with citations (or that it does not cover it). Then one block
   headed "External evidence (not part of the protocols)" with up to 6 one-line findings, each tagged
-  [PubMed <pmid>, <year>], [Web: <domain>, <year>] or [FDA label: <drug>]. Then "Possible collisions": each
+  [PubMed <pmid>, <year>], [Web: <domain>, <year>], [FDA label: <drug>], [NCBI Gene: SYMBOL], [CPIC: GENE–drug]
+  or [ClinVar: id]. Then "Possible collisions": each
   as "Protocol: … [citation] vs external: … [tag]" with one line on what to do: the protocol prevails for a
   trial patient; deviations go to the study team / PI. If nothing collides, say so.
 - Out-of-scope questions (adult medicine, non-oncology) are still refused before any tool runs.
@@ -141,7 +148,7 @@ root_agent = Agent(
     description="Grounded search over BSPHO paediatric haemato-oncology protocols with page citations.",
     instruction=SYSTEM_PROMPT,
     tools=[list_protocols, get_outline, search_pages, read_pages, search_pubmed, get_drug_label,
-           AgentTool(agent=web_evidence)],
+           get_gene_info, get_pharmacogenomics, search_clinvar, AgentTool(agent=web_evidence)],
     generate_content_config=types.GenerateContentConfig(
         temperature=0.1,
         thinking_config=types.ThinkingConfig(thinking_level=THINKING) if THINKING else None,
