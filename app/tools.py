@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from google.adk.tools import ToolContext
 
-from app import corpus, pubmed
+from app import corpus, external, pubmed
 
 MAX_READS_PER_TURN = 6  # a clinician is waiting: after this many page reads the model must answer with what it has
 
@@ -84,3 +84,14 @@ def search_pubmed(query: str, max_results: int = 5) -> dict:
         return {"error": f"PubMed unavailable: {type(e).__name__}", "results": []}
     return {"query": query, "source": "PubMed (NCBI E-utilities)", "results": results,
             "note": "External to the BSPHO protocols. Report separately; the protocol prevails for trial patients."}
+
+
+def get_drug_label(drug: str) -> dict:
+    """EXTERNAL: the FDA prescribing information of a drug (generic or brand name): boxed warning, drug
+    interactions, contraindications, warnings, paediatric use. Use when a co-medication, supportive drug or
+    interaction could collide with the protocol's chemotherapy (e.g. azoles with vincristine, NSAIDs with
+    methotrexate). Report in the external block as [FDA label: <drug>]. Never present it as a protocol rule."""
+    try:
+        return external.drug_label(drug)
+    except Exception as e:  # noqa: BLE001
+        return {"drug": drug, "found": False, "error": f"openFDA unavailable: {type(e).__name__}"}
