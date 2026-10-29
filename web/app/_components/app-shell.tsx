@@ -96,10 +96,10 @@ export function AppShell() {
     [toast],
   );
 
-  const sessionId = useMemo(
-    () => `${sessionBase}-${hashOf(`${hospital}|${includeSubs}|${[...protocolIds].sort().join(",")}`)}`,
-    [sessionBase, hospital, includeSubs, protocolIds],
-  );
+  // One session per conversation. Changing the hospital, the protocol selection or deep search does NOT start a
+  // new session: the selection goes to the agent as a state delta with every message, so follow-ups keep their
+  // history ("yes" after "would you like…" must still work). Only "New conversation" resets it.
+  const sessionId = sessionBase;
   const newConversation = useCallback(() => setSessionBase(crypto.randomUUID().slice(0, 8)), []);
 
   return (
@@ -166,14 +166,6 @@ export function AppShell() {
 }
 
 /** Short, stable hash of the selection, so the session id changes exactly when the selection does. */
-function hashOf(text: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i++) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0).toString(36);
-}
 
 async function fetchProtocols(): Promise<ProtocolsResponse & { mock?: boolean }> {
   const res = await fetch("/api/protocols");
