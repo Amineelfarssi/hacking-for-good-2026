@@ -100,6 +100,20 @@ export function AppShell() {
   // new session: the selection goes to the agent as a state delta with every message, so follow-ups keep their
   // history ("yes" after "would you like…" must still work). Only "New conversation" resets it.
   const sessionId = sessionBase;
+  const openPage = useCallback(
+    async (protocolId: string, page: number) => {
+      const protocol = (data?.protocols ?? []).find((p) => p.id === protocolId);
+      if (!protocol) return;
+      try {
+        const url = await pdfUrl(protocol, urlCache.current);
+        setViewer({ protocol, page, url });
+      } catch {
+        toast({ title: "Could not open the PDF", description: protocol.short_title, variant: "destructive" });
+      }
+    },
+    [data, toast],
+  );
+
   const newConversation = useCallback(() => setSessionBase(crypto.randomUUID().slice(0, 8)), []);
 
   return (
@@ -148,6 +162,7 @@ export function AppShell() {
                 protocolIds={protocolIds}
                 includeSubs={includeSubs}
                 onOpenCitation={openCitation}
+                onOpenPage={openPage}
                 onNewConversation={newConversation}
               />
             </section>

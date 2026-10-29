@@ -1,4 +1,5 @@
 import type { Protocol } from "@/lib/protocols";
+import type { TrailEvent } from "@/lib/trail";
 
 export type ViewerTarget = {
   protocol: Protocol;
@@ -19,4 +20,8 @@ export type ChatMessage = {
   status?: string;
   error?: string;
   vote?: "up" | "down";
+  /** Tool calls and results, for the navigation trail. */
+  trail?: TrailEvent[];
+  startedAt?: number;
+  finishedAt?: number;
 };

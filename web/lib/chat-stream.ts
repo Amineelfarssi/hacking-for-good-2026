@@ -13,6 +13,8 @@ export type ChatEvent =
   | { type: "session"; session_id: string; mock: boolean }
   | { type: "status"; text: string }
   | { type: "delta"; text: string }
+  | { type: "tool_call"; name: string; args: Record<string, unknown> }
+  | { type: "tool_result"; name: string; summary: Record<string, unknown> }
   | { type: "done" }
   | { type: "error"; message: string };
 
