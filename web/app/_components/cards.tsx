@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Citation } from "@/lib/citations";
 import type { ClarifyCard as ClarifyCardData, CriteriaCard as CriteriaCardData } from "@/lib/cards";
+import { AnswerMarkdown } from "./answer-markdown";
 import { CitationChip } from "./citation-chip";
 
 /** A question the agent needs answered before it can search; one button per option. */
@@ -61,7 +62,9 @@ export function CriteriaCard({ card, onOpenCitation }: { card: CriteriaCardData;
             {card.rows.map((r, i) => (
               <tr key={i} className="border-t border-line align-top">
                 <td className="px-4 py-2 font-medium text-ink">{r.item}</td>
-                <td className="px-3 py-2 text-ink">{r.value}</td>
+                <td className="px-3 py-2 text-ink">
+                  <AnswerMarkdown text={r.value} onOpenCitation={onOpenCitation} inline />
+                </td>
                 <td className="px-3 py-2">
                   {r.citation ? (
                     <CitationChip citation={r.citation} onClick={() => onOpenCitation(r.citation!)} />

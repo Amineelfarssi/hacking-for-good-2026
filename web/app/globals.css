@@ -125,4 +125,6 @@
   .answer-md th, .answer-md td { @apply border border-line px-2 py-1 text-left align-top; }
   .answer-md th { @apply bg-sunken font-medium; }
   .answer-md blockquote { @apply my-2 border-l-2 border-line pl-3 text-ink-soft; }
+  .answer-md .katex, .answer-md-inline .katex { font-size: 1em; }
+  .answer-md-inline a { @apply text-primary underline underline-offset-2; }
 }
