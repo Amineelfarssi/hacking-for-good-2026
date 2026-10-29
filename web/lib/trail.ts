@@ -16,16 +16,36 @@ export type Trail = {
   currentKey?: string;
   lastSeq: number;
   hospital?: string;
-  /** External evidence: set once search_pubmed was called; n from its result. */
-  pubmed?: { query?: string; n?: number; done: boolean };
+  /** External evidence consulted (PubMed, web, FDA labels, NCBI Gene, CPIC, ClinVar), in call order. */
+  external: { kind: ExternalKind; label: string; done: boolean }[];
 };
 
-const EMPTY: Trail = { protocols: [], searches: 0, sections: 0, pagesRead: 0, lastSeq: 0 };
+export type ExternalKind = "pubmed" | "web" | "label" | "gene" | "cpic" | "clinvar";
+
+/** Tool name → external-evidence kind and labels (before and after its result). */
+export const EXTERNAL_TOOLS: Record<string, { kind: ExternalKind; pending: string; done: (s: Record<string, unknown>) => string }> = {
+  search_pubmed: { kind: "pubmed", pending: "PubMed", done: (s) => `PubMed: ${typeof s.n === "number" ? s.n : 0} results` },
+  web_evidence: { kind: "web", pending: "web", done: () => "web guidelines" },
+  get_drug_label: {
+    kind: "label",
+    pending: "FDA label",
+    done: (s) => `FDA label${typeof s.drug === "string" ? `: ${s.drug}` : ""}${s.found === false ? " (not found)" : ""}`,
+  },
+  get_gene_info: {
+    kind: "gene",
+    pending: "NCBI Gene",
+    done: (s) => `NCBI Gene${typeof s.symbol === "string" ? `: ${s.symbol}` : ""}${s.found === false ? " (not found)" : ""}`,
+  },
+  get_pharmacogenomics: { kind: "cpic", pending: "CPIC", done: (s) => `CPIC: ${typeof s.n === "number" ? s.n : 0} gene–drug pairs` },
+  search_clinvar: { kind: "clinvar", pending: "ClinVar", done: (s) => `ClinVar: ${typeof s.n === "number" ? s.n : 0} records` },
+};
+
+const EMPTY: Trail = { protocols: [], searches: 0, sections: 0, pagesRead: 0, lastSeq: 0, external: [] };
 
 /** Fold the tool events of one answer into protocol columns: root → sections surfaced → pages read. */
 export function buildTrail(events: TrailEvent[]): Trail {
   if (events.length === 0) return EMPTY;
-  const t: Trail = { protocols: [], searches: 0, sections: 0, pagesRead: 0, lastSeq: 0 };
+  const t: Trail = { protocols: [], searches: 0, sections: 0, pagesRead: 0, lastSeq: 0, external: [] };
   const byId = new Map<string, TrailProtocol>();
   let seq = 0;
   const proto = (id: unknown, title?: unknown): TrailProtocol | undefined => {
@@ -44,9 +64,11 @@ export function buildTrail(events: TrailEvent[]): Trail {
 
   for (const e of events) {
     if (e.type === "tool_call") {
-      if (e.name === "search_pubmed") {
-        t.pubmed = { query: typeof e.args.query === "string" ? e.args.query : undefined, done: false };
-        t.currentKey = "pubmed";
+      const ext = EXTERNAL_TOOLS[e.name];
+      if (ext) {
+        const hint = typeof e.args.drug === "string" ? e.args.drug : typeof e.args.symbol === "string" ? e.args.symbol : undefined;
+        t.external.push({ kind: ext.kind, label: hint ? `${ext.pending}: ${hint}` : ext.pending, done: false });
+        t.currentKey = "external";
       }
       if (e.name === "get_outline" || e.name === "read_pages") {
         const p = proto(e.args.protocol_id);
@@ -66,10 +88,19 @@ export function buildTrail(events: TrailEvent[]): Trail {
       case "list_protocols":
         if (typeof s.hospital === "string") t.hospital = s.hospital;
         break;
-      case "search_pubmed":
-        t.pubmed = { query: typeof s.query === "string" ? s.query : t.pubmed?.query, n: typeof s.n === "number" ? s.n : 0, done: true };
-        t.currentKey = "pubmed";
+      default: {
+        const ext = EXTERNAL_TOOLS[e.name];
+        if (!ext) break;
+        let x = t.external.find((ex) => ex.kind === ext.kind && !ex.done);
+        if (!x) {
+          x = { kind: ext.kind, label: ext.pending, done: false };
+          t.external.push(x);
+        }
+        x.done = true;
+        x.label = ext.done(s);
+        t.currentKey = "external";
         break;
+      }
       case "get_outline":
         proto(s.protocol_id, s.protocol);
         break;
@@ -126,7 +157,7 @@ export function trailSummary(t: Trail, durationMs?: number): string {
   parts.push(`${t.searches} search${t.searches === 1 ? "" : "es"}`);
   parts.push(`${t.sections} section${t.sections === 1 ? "" : "s"}`);
   parts.push(`${t.pagesRead} page${t.pagesRead === 1 ? "" : "s"} read`);
-  if (t.pubmed) parts.push(`PubMed ${t.pubmed.n ?? "…"}`);
+  if (t.external.length) parts.push(`${t.external.length} external`);
   if (durationMs !== undefined) parts.push(`${Math.max(1, Math.round(durationMs / 1000))} s`);
   return parts.join(" · ");
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { GitBranch, Loader2, RotateCcw, SendHorizontal, ThumbsDown, ThumbsUp } from "lucide-react";
+import { GitBranch, Loader2, Paperclip, RotateCcw, SendHorizontal, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -30,9 +30,11 @@ type Props = {
   onNewConversation: () => void;
   /** Bumped by the header's "Decision flow" button: opens the drawer for the latest answer. */
   flowSignal: number;
+  /** Opens the shared "Upload a document" dialog. */
+  onRequestUpload: () => void;
 };
 
-export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpenCitation, onOpenPage, onNewConversation, flowSignal }: Props) {
+export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpenCitation, onOpenPage, onNewConversation, flowSignal, onRequestUpload }: Props) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -252,6 +254,19 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
         }}
       >
         <div className="mx-auto flex max-w-[760px] items-end gap-2 rounded-xl border border-line bg-canvas p-1.5 focus-within:border-primary/60 focus-within:bg-white">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onRequestUpload}
+                aria-label="Upload a document"
+                className="mb-0.5 flex size-8 shrink-0 items-center justify-center rounded-md text-ink-faint hover:bg-sunken hover:text-ink"
+              >
+                <Paperclip className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Upload an institutional document (SOP, local guideline)</TooltipContent>
+          </Tooltip>
           <Textarea
             ref={textareaRef}
             value={draft}
@@ -301,7 +316,7 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
       <div>
         <h3 className="font-heading text-xl font-semibold text-ink">Ask a protocol question</h3>
         <p className="mt-1 text-sm text-ink-soft">
-          Answers come only from the protocols ticked on the left, with the document and page for every fact. When something is not covered, the assistant says so.
+          Protocol answers come from the documents ticked on the left, with document and page for every fact. When a complication, co-medication or genetic marker matters, the assistant adds clearly labelled external evidence (PubMed, guidelines, FDA labels, CPIC, ClinVar), kept separate from the protocol.
         </p>
       </div>
       <ul className="space-y-2">
