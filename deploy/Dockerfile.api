@@ -24,7 +24,7 @@ WORKDIR /srv
 
 # dependencies first (cached layer); the project itself is not a package (pyproject: package = false)
 COPY --chown=app:app pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
+RUN \
     uv sync --frozen --no-dev --no-install-project
 
 # source: app/ (agent + server) and scripts/ (page extraction used by admin uploads, corpus fetch)
