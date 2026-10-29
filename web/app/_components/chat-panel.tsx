@@ -133,7 +133,7 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
   const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey) && !e.nativeEvent.isComposing) {
       e.preventDefault();
       void send(draft);
     }
@@ -141,43 +141,43 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3">
-        <div>
-          <h2 className="text-[15px] font-medium leading-6 text-ink">Assistant</h2>
-          <p className="text-xs text-ink-faint">
-            {hospital} · {protocolIds.length} source{protocolIds.length === 1 ? "" : "s"}
-            {includeSubs ? " · deep search" : ""}
-            {mock ? " · mock backend" : ""}
-          </p>
-        </div>
+      <div className="flex h-10 shrink-0 items-center gap-2 pl-4 pr-2">
+        <h2 className="text-sm font-medium leading-6 text-ink">Assistant</h2>
+        <p className="min-w-0 truncate text-xs text-ink-faint">
+          {hospital} · {protocolIds.length} source{protocolIds.length === 1 ? "" : "s"}
+          {includeSubs ? " · deep search" : ""}
+          {mock ? " · mock backend" : ""}
+        </p>
         {messages.length > 0 && (
-          <Button variant="ghost" size="sm" className="h-8 text-ink-soft" onClick={onNewConversation} disabled={busy}>
-            <RotateCcw />
-            New conversation
+          <Button variant="ghost" size="sm" className="ml-auto h-8 px-2 text-xs text-ink-soft" onClick={onNewConversation} disabled={busy}>
+            <RotateCcw className="!size-3.5" />
+            New
           </Button>
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {messages.length === 0 ? (
           <EmptyState onPick={(q) => void send(q)} />
         ) : (
-          <ol className="space-y-4">
+          <ol className="space-y-3">
             {messages.map((m) => (
               <li key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
                 {m.role === "user" ? (
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-sunken px-4 py-2.5 text-[14px] leading-6 text-ink">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-sunken px-3 py-2 text-sm leading-6 text-ink">
                     {m.content}
                   </div>
                 ) : (
-                  <div className="w-full max-w-[95%] animate-fade-up">
-                    <div className="rounded-2xl rounded-bl-md border border-line bg-white px-4 py-3">
+                  <div className="w-full animate-fade-up">
+                    <div className="rounded-2xl rounded-bl-md bg-white px-4 py-3">
                       {m.content && (
                         <AnswerBody
                           text={m.content}
                           onOpenCitation={onOpenCitation}
                           onSend={(t) => void send(t)}
                           cardsDisabled={busy || m.id !== lastAssistantId}
+                          isLatest={m.id === lastAssistantId}
+                          streaming={m.streaming}
                         />
                       )}
                       {m.status && (
@@ -200,7 +200,7 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
                       )}
                     </div>
                     {!m.streaming && m.content && (
-                      <div className="mt-1 flex items-center gap-0.5 pl-1">
+                      <div className="mt-0.5 flex items-center gap-0.5 pl-1">
                         <VoteButton label="Helpful" active={m.vote === "up"} onClick={() => void vote(m, "up")} icon={<ThumbsUp />} />
                         <VoteButton label="Not helpful" active={m.vote === "down"} onClick={() => void vote(m, "down")} icon={<ThumbsDown />} />
                       </div>
@@ -215,32 +215,29 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
       </div>
 
       <form
-        className="shrink-0 border-t border-line p-3"
+        className="shrink-0 p-3 pt-1"
         onSubmit={(e) => {
           e.preventDefault();
           void send(draft);
         }}
       >
-        <div className="flex items-end gap-2 rounded-[10px] border border-line bg-white p-1.5 focus-within:border-primary/50">
+        <div className="flex items-end gap-2 rounded-xl border border-line bg-white p-1.5 focus-within:border-primary/50">
           <Textarea
             ref={textareaRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Ask about a protocol… (Enter to send, Shift+Enter for a new line)"
+            placeholder="Ask about the selected protocols… (Enter sends, Shift+Enter for a new line)"
             rows={2}
             className="min-h-[44px] resize-none border-0 bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             disabled={busy}
             autoFocus
           />
-          <Button type="submit" size="sm" className="h-9 rounded-[8px] px-3" disabled={busy || !draft.trim()} aria-label="Send">
+          <Button type="submit" size="sm" className="h-9 rounded-[10px] px-3" disabled={busy || !draft.trim()} aria-label="Send">
             {busy ? <Loader2 className="animate-spin" /> : <SendHorizontal />}
             Send
           </Button>
         </div>
-        <p className="mt-1.5 px-1 text-[11px] text-ink-faint">
-          Answers come only from the selected BSPHO protocols. When something is not covered, the assistant says so.
-        </p>
       </form>
     </div>
   );
@@ -272,9 +269,9 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
   return (
     <div className="mx-auto flex h-full max-w-md flex-col justify-center gap-4 py-6">
       <div>
-        <h3 className="text-[15px] font-medium text-ink">Ask a protocol question</h3>
+        <h3 className="text-base font-medium text-ink">Ask a protocol question</h3>
         <p className="mt-1 text-sm text-ink-soft">
-          The assistant searches the protocols ticked on the left and cites the document and page for every fact.
+          Answers come only from the protocols ticked on the left, with the document and page for every fact. When something is not covered, the assistant says so.
         </p>
       </div>
       <ul className="space-y-2">
@@ -283,7 +280,7 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
             <button
               type="button"
               onClick={() => onPick(q)}
-              className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-left text-sm text-ink transition-colors hover:border-primary/50 hover:bg-primary/5"
+              className="w-full rounded-xl bg-white px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-primary/5"
             >
               {q}
             </button>

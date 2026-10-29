@@ -21,7 +21,21 @@ export function AppShell() {
   // Selection is "everything at the hospital, minus what the user unticked"; a hospital change clears it.
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
   const [includeSubs, setIncludeSubs] = useState(false);
-  const [viewer, setViewer] = useState<ViewerTarget | null>(null);
+  const [viewer, setViewerState] = useState<ViewerTarget | null>(null);
+  const [sourcesOpen, setSourcesOpen] = useState(true);
+  const [viewerOpen, setViewerOpen] = useState(true);
+  // Opening a page always reveals the viewer; Escape hides it.
+  const setViewer = useCallback((t: ViewerTarget) => {
+    setViewerState(t);
+    setViewerOpen(true);
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setViewerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   // One session per selection: the agent reads hospital/protocol_ids/include_subprotocols from the session
   // state set at creation, so any change (or "New conversation") gets a fresh id. Chat history stays on screen.
   const [sessionBase, setSessionBase] = useState(() => crypto.randomUUID().slice(0, 8));
@@ -81,7 +95,7 @@ export function AppShell() {
         toast({ title: "Could not open the PDF", description: protocol.short_title, variant: "destructive" });
       }
     },
-    [data, toast],
+    [data, toast, setViewer],
   );
 
   const openProtocol = useCallback(
@@ -93,7 +107,7 @@ export function AppShell() {
         toast({ title: "Could not open the PDF", description: protocol.short_title, variant: "destructive" });
       }
     },
-    [toast],
+    [toast, setViewer],
   );
 
   // One session per conversation. Changing the hospital, the protocol selection or deep search does NOT start a
@@ -111,35 +125,38 @@ export function AppShell() {
         toast({ title: "Could not open the PDF", description: protocol.short_title, variant: "destructive" });
       }
     },
-    [data, toast],
+    [data, toast, setViewer],
   );
 
   const newConversation = useCallback(() => setSessionBase(crypto.randomUUID().slice(0, 8)), []);
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 border-b border-line bg-canvas px-5 pb-3 pt-4">
-        <div>
-          <h1 className="page-title">OncoProtocol Assist</h1>
-          <p className="page-subtitle">
-            Grounded search over BSPHO paediatric haemato-oncology protocols. Cites document and page; never guesses.
-          </p>
-        </div>
-        <Badge variant="outline" className="mt-1 border-line bg-sunken font-medium text-ink-soft">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-4">
+        <h1 className="page-title whitespace-nowrap">OncoProtocol Assist</h1>
+        <p className="page-subtitle hidden min-w-0 truncate md:block">
+          Grounded search over BSPHO paediatric haemato-oncology protocols. Cites document and page; never guesses.
+        </p>
+        <Badge variant="outline" className="ml-auto whitespace-nowrap border-line bg-sunken font-normal text-ink-soft">
           Search utility, not a medical device
         </Badge>
       </header>
 
       <Tabs defaultValue="assistant" className="flex min-h-0 flex-1 flex-col">
-        <TabsList variant="underline" className="shrink-0 px-5">
-          <TabsTrigger value="assistant">Assistant</TabsTrigger>
-          <TabsTrigger value="admin">Admin</TabsTrigger>
+        <TabsList variant="underline" className="h-9 shrink-0 px-4">
+          <TabsTrigger value="assistant" className="pb-1.5 pt-1">Assistant</TabsTrigger>
+          <TabsTrigger value="admin" className="pb-1.5 pt-1">Admin</TabsTrigger>
         </TabsList>
 
         <TabsContent value="assistant" className="mt-0 min-h-0 flex-1 data-[state=inactive]:hidden">
-          <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_minmax(0,1fr)]">
+          <div
+            className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[var(--cols)]"
+            style={{ "--cols": `${sourcesOpen ? "272px" : "48px"} minmax(0,1fr) ${viewerOpen ? "minmax(0,1fr)" : "48px"}` } as React.CSSProperties}
+          >
             <aside className="min-h-0 border-b border-line lg:border-b-0 lg:border-r">
               <SourcesPanel
+                open={sourcesOpen}
+                onToggle={() => setSourcesOpen((v) => !v)}
                 hospitals={data?.hospitals ?? []}
                 hospital={hospital}
                 onHospitalChange={changeHospital}
@@ -154,7 +171,7 @@ export function AppShell() {
                 loading={!data}
               />
             </aside>
-            <section className="min-h-0 min-w-0 border-b border-line lg:border-b-0 lg:border-r">
+            <section className="min-h-0 min-w-0 border-b border-line bg-white/40 lg:border-b-0 lg:border-r">
               <ChatPanel
                 key={sessionBase}
                 sessionId={sessionId}
@@ -167,7 +184,7 @@ export function AppShell() {
               />
             </section>
             <section className="min-h-0 min-w-0">
-              <SourceViewer target={viewer} />
+              <SourceViewer target={viewer} open={viewerOpen} onToggle={() => setViewerOpen((v) => !v)} />
             </section>
           </div>
         </TabsContent>
