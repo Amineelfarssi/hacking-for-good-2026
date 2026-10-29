@@ -99,8 +99,9 @@ def rules_check(qid: str, a: dict) -> tuple[bool, str]:
         notes.append(f"only {len(cites)} citations")
     else:
         notes.append(f"{len(cites)} citations")
+    norm = lambda x: re.sub(r"[^a-z0-9]", "", x.lower())  # "HR-NBL2" == "HRNBL2"
     for p in r.get("protocols", []):
-        if not any(p.lower() in c[0].lower() for c in cites):
+        if not any(norm(p) in norm(c[0]) for c in cites):
             ok = False
             notes.append(f"no citation to {p}")
     if r.get("offers_deep_dive"):
@@ -188,7 +189,13 @@ def main() -> None:
              "|---|---|---|---|---|---|---|---|"]
     for r in rows:
         lines.append("| " + " | ".join(str(x) for x in r) + " |")
-    lines += ["", "## Totals", ""]
+    lines += ["", "## Notes", "",
+              "- Q7 / Q7b: the reference's acute work-up comes from the ALLTogether1 *Central Neurotoxicity* guideline, which the "
+              "master protocol references (p. 401, §29) but which is not in the hackathon corpus; the agent says so and reads the "
+              "Thrombosis and Glucarpidase guidelines in full. Coverage is capped by the corpus, not by retrieval.",
+              "- Latency is the demo setting (read budget 6, each section once). A completeness setting (budget 8) raised citations "
+              "(Q1 37, Q3 16, Q7b 13) at 95–220 s per answer; see eval/results/20261029-130631.md.",
+              "", "## Totals", ""]
     for tier in ("must", "should", "could"):
         if tier in by_tier:
             lines.append(f"- **{tier}-have**: {by_tier[tier][0]} / {by_tier[tier][1]} PASS")

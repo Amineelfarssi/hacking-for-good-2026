@@ -9,15 +9,37 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
 HOSPITALS = ["UZA", "UZL", "CHU", "UCL", "HUDERF", "UZG"]
-ROOT = Path(os.environ.get("CORPUS_DIR", "data/uc1")).resolve()
+CORPUS_DIR = os.environ.get("CORPUS_DIR", "data/uc1")
+# On Agent Engine there is no disk with our data: CORPUS_DIR=gs://<bucket>/<prefix> makes the first load() copy the
+# manifest and the page JSON (not the PDFs, which only the server routes need) into a temp dir. A local path is used
+# as before.
+GCS_URI = CORPUS_DIR if CORPUS_DIR.startswith("gs://") else None
+ROOT = Path(tempfile.mkdtemp(prefix="corpus-")) if GCS_URI else Path(CORPUS_DIR).resolve()
 PAGES_DIR = ROOT / "pages"
 MANIFEST = ROOT / "manifest.jsonl"
 _lock = threading.Lock()
+
+
+def _fetch_from_gcs() -> None:
+    """Copy manifest.jsonl and pages/*.json from GCS_URI into ROOT (once per process)."""
+    from google.cloud import storage  # imported here so a local corpus needs no cloud client
+
+    bucket_name, _, prefix = GCS_URI[len("gs://"):].partition("/")
+    prefix = prefix.strip("/")
+    key = (lambda name: f"{prefix}/{name}" if prefix else name)
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    PAGES_DIR.mkdir(parents=True, exist_ok=True)
+    bucket.blob(key("manifest.jsonl")).download_to_filename(MANIFEST)
+    for blob in client.list_blobs(bucket, prefix=key("pages/")):
+        if blob.name.endswith(".json"):
+            blob.download_to_filename(PAGES_DIR / Path(blob.name).name)
 
 HEADING = re.compile(r"^(\d{1,2}(?:\.\d{1,2}){0,2})\.?\s+([A-Z][^\n]{3,90})$", re.M)
 # a table-of-contents line: "12.1 Pulmonary metastases ........ 58" or "12.1 Pulmonary metastases 58"
@@ -74,6 +96,8 @@ def load(force: bool = False) -> dict[str, Protocol]:
         if _protocols and not force:
             return _protocols
         _protocols.clear()
+        if GCS_URI and not MANIFEST.exists():
+            _fetch_from_gcs()
         for line in MANIFEST.read_text().splitlines():
             if not line.strip():
                 continue
@@ -194,4 +218,7 @@ def add_protocol(pdf_path: Path, short_title: str, kind: str, hospitals: list[st
     with MANIFEST.open("a") as f:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
     load(force=True)
+    # TODO(cloud): on Cloud Run the container disk is ephemeral, so an upload is lost at the next restart. Add
+    # push_protocol_to_bucket(pid) here: upload the PDF, pages/<pid>.json and the new manifest row to
+    # gs://$CORPUS_BUCKET/$CORPUS_PREFIX/ (deploy/README.md, "Admin uploads").
     return get(pid)
