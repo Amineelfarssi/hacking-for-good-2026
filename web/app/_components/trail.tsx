@@ -40,6 +40,13 @@ export function Trail({ events, streaming, durationMs, onOpenPage }: Props) {
               {trail.protocols.map((p) => (
                 <ProtocolRow key={p.id} p={p} currentKey={trail.currentKey} onOpenPage={onOpenPage} />
               ))}
+              {trail.pubmed && (
+                <li className="flex items-start">
+                  <Node current={trail.currentKey === "pubmed"} pending={!trail.pubmed.done} title={trail.pubmed.query} className="shrink-0 border-ink-faint/50 bg-white text-ink-soft">
+                    External evidence consulted (PubMed: {trail.pubmed.done ? `${trail.pubmed.n} results` : "…"})
+                  </Node>
+                </li>
+              )}
             </ol>
           )}
         </div>
@@ -113,7 +120,7 @@ function Node({
       onClick={onClick}
       title={title}
       className={cn(
-        "inline-flex max-w-[200px] items-center truncate rounded-lg border px-1.5 text-xs leading-5 animate-fade-up",
+        "inline-flex max-w-[320px] items-center truncate rounded-lg border px-1.5 text-xs leading-5 animate-fade-up",
         solid ? "border-cite-line bg-cite-bg text-cite-ink" : "border-transparent bg-white/70 text-ink-soft",
         pending && "border-dashed border-ink-faint text-ink-faint",
         current && "border-primary/70 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]",

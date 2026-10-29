@@ -16,6 +16,8 @@ export type Trail = {
   currentKey?: string;
   lastSeq: number;
   hospital?: string;
+  /** External evidence: set once search_pubmed was called; n from its result. */
+  pubmed?: { query?: string; n?: number; done: boolean };
 };
 
 const EMPTY: Trail = { protocols: [], searches: 0, sections: 0, pagesRead: 0, lastSeq: 0 };
@@ -42,6 +44,10 @@ export function buildTrail(events: TrailEvent[]): Trail {
 
   for (const e of events) {
     if (e.type === "tool_call") {
+      if (e.name === "search_pubmed") {
+        t.pubmed = { query: typeof e.args.query === "string" ? e.args.query : undefined, done: false };
+        t.currentKey = "pubmed";
+      }
       if (e.name === "get_outline" || e.name === "read_pages") {
         const p = proto(e.args.protocol_id);
         if (p && e.name === "read_pages") {
@@ -59,6 +65,10 @@ export function buildTrail(events: TrailEvent[]): Trail {
     switch (e.name) {
       case "list_protocols":
         if (typeof s.hospital === "string") t.hospital = s.hospital;
+        break;
+      case "search_pubmed":
+        t.pubmed = { query: typeof s.query === "string" ? s.query : t.pubmed?.query, n: typeof s.n === "number" ? s.n : 0, done: true };
+        t.currentKey = "pubmed";
         break;
       case "get_outline":
         proto(s.protocol_id, s.protocol);
@@ -116,6 +126,7 @@ export function trailSummary(t: Trail, durationMs?: number): string {
   parts.push(`${t.searches} search${t.searches === 1 ? "" : "es"}`);
   parts.push(`${t.sections} section${t.sections === 1 ? "" : "s"}`);
   parts.push(`${t.pagesRead} page${t.pagesRead === 1 ? "" : "s"} read`);
+  if (t.pubmed) parts.push(`PubMed ${t.pubmed.n ?? "…"}`);
   if (durationMs !== undefined) parts.push(`${Math.max(1, Math.round(durationMs / 1000))} s`);
   return parts.join(" · ");
 }

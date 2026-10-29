@@ -54,8 +54,10 @@ export function buildFlow(input: FlowInput): FlowNode[] {
   let sectionCount = 0;
   const reads = new Map<string, { title: string; ranges: string[]; pages: number }>();
   let listed: number | undefined;
+  let pubmed: { n?: number } | undefined;
   for (const e of events) {
     if (e.type === "tool_call") {
+      if (e.name === "search_pubmed") pubmed = pubmed ?? {};
       const ids = e.args.protocol_ids;
       if (Array.isArray(ids)) ids.forEach((id) => searched.add(String(id)));
       if (typeof e.args.protocol_id === "string") searched.add(e.args.protocol_id);
@@ -73,6 +75,7 @@ export function buildFlow(input: FlowInput): FlowNode[] {
     } else {
       const s = e.summary;
       if (e.name === "list_protocols" && typeof s.n === "number") listed = s.n;
+      if (e.name === "search_pubmed") pubmed = { n: typeof s.n === "number" ? s.n : 0 };
       if (e.name === "search_pages" && Array.isArray(s.sections)) {
         for (const sec of s.sections as Record<string, unknown>[]) {
           sectionCount += 1;
@@ -165,6 +168,12 @@ export function buildFlow(input: FlowInput): FlowNode[] {
     title: deepTaken ? "Deep dive taken" : "Deep dive offered",
     status: deepTaken ? "done" : deepOffered ? "done" : done ? "skipped" : "pending",
     detail: deepTaken ? "Sub-protocols were in scope" : deepOffered ? "The answer points to the sub-protocols" : "Not needed",
+  });
+  nodes.push({
+    key: "pubmed",
+    title: "External evidence consulted",
+    status: pubmed ? (pubmed.n !== undefined ? "done" : "active") : done ? "skipped" : "pending",
+    detail: pubmed ? `PubMed: ${pubmed.n ?? "…"} result${pubmed.n === 1 ? "" : "s"}` : "Optional: PubMed, outside the protocols",
   });
   nodes.push({
     key: "answer",
