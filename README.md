@@ -14,6 +14,8 @@ No patient data, no PII: the corpus is protocols and guidelines, every case is a
 
 ## Architecture
 
+A friendly six-picture explainer of the solution: [`docs/explainer.html`](docs/explainer.html) (open it in a browser).
+
 ### System view (Google Cloud, lab project)
 
 ```mermaid

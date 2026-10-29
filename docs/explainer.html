@@ -1,0 +1,242 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OncoProtocol Assist Explained</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a vertical picture-book — one idea per panel, illustration left, three sentences right. */
+  :root {
+    --bg: #F4F6F9; --surface: #FFFFFF; --ink: #12192B; --ink-soft: #3D475C; --ink-faint: #6B7689;
+    --line: #D7DDE5; --teal: #156D84; --teal-soft: #E1EEF2; --amber: #F5B14C; --amber-ink: #7C3A07; --amber-well: #FFF8E5;
+    --red: #B23A3A; --red-well: #FBEAEA;
+    --display: 'Source Serif 4', Georgia, serif; --body: 'IBM Plex Sans', system-ui, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #0F1524; --surface: #18213A; --ink: #EEF2F7; --ink-soft: #C3CCDA; --ink-faint: #8E9AB0; --line: #2A3552;
+    --teal: #5FB8CF; --teal-soft: #163345; --amber: #F5B14C; --amber-ink: #FFD98A; --amber-well: #3A2E12; --red: #F08A8A; --red-well: #3A1C1C; color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --bg: #0F1524; --surface: #18213A; --ink: #EEF2F7; --ink-soft: #C3CCDA; --ink-faint: #8E9AB0; --line: #2A3552;
+    --teal: #5FB8CF; --teal-soft: #163345; --amber: #F5B14C; --amber-ink: #FFD98A; --amber-well: #3A2E12; --red: #F08A8A; --red-well: #3A1C1C; color-scheme: dark }
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55; padding-block: 32px 64px;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  main { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  h1, h2 { font-family: var(--display); font-weight: 600; text-wrap: balance; line-height: 1.12; margin: 0; }
+  h1 { font-size: clamp(34px, 5vw, 52px); }
+  h2 { font-size: clamp(24px, 3vw, 32px); }
+  p { margin: 0; color: var(--ink-soft); max-width: 62ch; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); }
+  .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: center; padding: 8px 0 12px; }
+  .panel { display: grid; grid-template-columns: 1fr 1.1fr; gap: 28px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px; }
+  .panel.flip { grid-template-columns: 1.1fr 1fr; }
+  .panel.flip .art { order: 2; }
+  .art { min-width: 0; }
+  .art svg { width: 100%; height: auto; display: block; }
+  .copy { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; padding: 3px 10px; border-radius: 8px; border: 1px solid var(--amber); background: var(--amber-well); color: var(--amber-ink); }
+  .chip.ext { border-color: var(--teal); background: var(--teal-soft); color: var(--teal); }
+  .numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .num { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; }
+  .num b { font-family: var(--display); font-size: 36px; color: var(--teal); font-variant-numeric: tabular-nums; }
+  .num span { font-size: 14px; color: var(--ink-faint); }
+  .cast { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .who { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center; }
+  .who ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 15px; }
+  .who h3 { margin: 0; font-size: 18px; font-weight: 600; }
+  footer { color: var(--ink-faint); font-size: 14px; }
+  a { color: var(--teal); }
+  .bob { animation: bob 3.2s ease-in-out infinite; transform-origin: center; }
+  .walk { stroke-dasharray: 6 8; animation: walk 2.4s linear infinite; }
+  @keyframes bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+  @keyframes walk { to { stroke-dashoffset: -28 } }
+  @media (prefers-reduced-motion: reduce) { .bob, .walk { animation: none } }
+  @media (max-width: 760px) { .hero, .panel, .panel.flip { grid-template-columns: 1fr } .panel.flip .art { order: 0 } .numbers { grid-template-columns: repeat(2, 1fr) } .cast { grid-template-columns: 1fr } }
+</style>
+
+<main>
+  <section class="hero">
+    <div class="copy">
+      <span class="eyebrow">Hacking for Good 2026 · BSPHO · use case 1</span>
+      <h1>Meet the assistant that reads the protocol so the oncologist doesn't have to</h1>
+      <p>Twenty-seven paediatric haemato-oncology trial protocols, 4,142 pages. A clinician on a shift asks one question and gets the answer with the exact page, highlighted. Here is how it thinks, in six pictures.</p>
+    </div>
+    <div class="art" aria-hidden="true">
+      <svg viewBox="0 0 420 260" role="img" aria-label="A clinician next to a tall stack of protocol binders">
+        <!-- binders -->
+        <g>
+          <rect x="40" y="200" width="150" height="26" rx="4" fill="#156D84"/>
+          <rect x="46" y="172" width="150" height="26" rx="4" fill="#1F7E96"/>
+          <rect x="38" y="144" width="150" height="26" rx="4" fill="#156D84"/>
+          <rect x="44" y="116" width="150" height="26" rx="4" fill="#2A8DA5"/>
+          <rect x="40" y="88" width="150" height="26" rx="4" fill="#156D84"/>
+          <rect x="47" y="60" width="150" height="26" rx="4" fill="#1F7E96"/>
+          <rect x="41" y="32" width="150" height="26" rx="4" fill="#2A8DA5"/>
+          <text x="60" y="49" font-family="IBM Plex Sans, Arial" font-size="12" fill="#F4F6F9">ALLTogether1 · 415 p</text>
+          <text x="66" y="77" font-family="IBM Plex Sans, Arial" font-size="12" fill="#F4F6F9">FaR-RMS · 193 p</text>
+          <text x="60" y="105" font-family="IBM Plex Sans, Arial" font-size="12" fill="#F4F6F9">HR-NBL2 · 186 p</text>
+          <text x="63" y="133" font-family="IBM Plex Sans, Arial" font-size="12" fill="#F4F6F9">CHIP-AML22 · 189 p</text>
+          <text x="57" y="161" font-family="IBM Plex Sans, Arial" font-size="12" fill="#F4F6F9">SIOP Umbrella · 354 p</text>
+          <text x="65" y="189" font-family="IBM Plex Sans, Arial" font-size="12" fill="#F4F6F9">LINES · 267 p</text>
+          <text x="59" y="217" font-family="IBM Plex Sans, Arial" font-size="12" fill="#F4F6F9">… 21 more</text>
+        </g>
+        <!-- clinician -->
+        <g class="bob">
+          <circle cx="300" cy="96" r="26" fill="#F2D3B8"/>
+          <path d="M274 92 q26 -34 52 0" fill="#3D475C"/>
+          <rect x="266" y="126" width="68" height="78" rx="18" fill="#F4F6F9" stroke="#D7DDE5"/>
+          <rect x="294" y="126" width="12" height="40" fill="#156D84"/>
+          <circle cx="292" cy="98" r="2.5" fill="#12192B"/><circle cx="308" cy="98" r="2.5" fill="#12192B"/>
+          <path d="M292 110 q8 6 16 0" stroke="#12192B" stroke-width="2" fill="none"/>
+          <!-- stopwatch -->
+          <circle cx="360" cy="150" r="18" fill="#FFF8E5" stroke="#F5B14C" stroke-width="3"/>
+          <path d="M360 150 L360 138 M360 150 L369 155" stroke="#7C3A07" stroke-width="3" stroke-linecap="round"/>
+          <rect x="355" y="126" width="10" height="6" rx="2" fill="#F5B14C"/>
+        </g>
+        <!-- thought bubble -->
+        <g>
+          <ellipse cx="300" cy="40" rx="78" ry="22" fill="#FFFFFF" stroke="#D7DDE5"/>
+          <circle cx="282" cy="68" r="4" fill="#FFFFFF" stroke="#D7DDE5"/>
+          <text x="300" y="45" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="12" fill="#12192B">Which platelet count, and which page?</text>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="art" aria-hidden="true">
+      <svg viewBox="0 0 420 220" role="img" aria-label="A path from a protocol to a section to a page">
+        <path class="walk" d="M40 180 C 110 180, 120 110, 200 110 S 300 60, 380 60" fill="none" stroke="#156D84" stroke-width="3" stroke-linecap="round"/>
+        <!-- protocol -->
+        <rect x="18" y="150" width="54" height="64" rx="6" fill="#156D84"/><text x="45" y="188" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#F4F6F9">protocol</text>
+        <!-- section -->
+        <rect x="170" y="82" width="64" height="56" rx="6" fill="#FFFFFF" stroke="#156D84" stroke-width="2"/>
+        <rect x="178" y="92" width="48" height="4" fill="#156D84"/><rect x="178" y="102" width="40" height="4" fill="#D7DDE5"/><rect x="178" y="112" width="44" height="4" fill="#D7DDE5"/><rect x="178" y="122" width="30" height="4" fill="#D7DDE5"/>
+        <text x="202" y="156" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#3D475C">§3.1.1 section</text>
+        <!-- page -->
+        <rect x="350" y="26" width="58" height="72" rx="4" fill="#FFFFFF" stroke="#D7DDE5"/>
+        <rect x="357" y="36" width="44" height="3" fill="#D7DDE5"/><rect x="357" y="44" width="44" height="3" fill="#D7DDE5"/>
+        <rect x="356" y="52" width="46" height="9" rx="2" fill="#F5B14C" opacity=".85"/>
+        <rect x="357" y="66" width="44" height="3" fill="#D7DDE5"/><rect x="357" y="74" width="30" height="3" fill="#D7DDE5"/>
+        <text x="379" y="116" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#3D475C">p. 57</text>
+        <!-- walker -->
+        <g class="bob"><circle cx="128" cy="150" r="9" fill="#F2D3B8"/><rect x="121" y="160" width="14" height="18" rx="5" fill="#F4F6F9" stroke="#D7DDE5"/></g>
+        <text x="210" y="205" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="12" fill="#6B7689">outline · search grouped by section · read the pages</text>
+      </svg>
+    </div>
+    <div class="copy">
+      <span class="eyebrow">1 · It reads like a clinician</span>
+      <h2>No vector index. It walks protocol, section, page.</h2>
+      <p>The agent opens the protocol's table of contents (with a one-line summary per section), searches the text with synonyms, sees which sections had hits, and reads those pages. Nothing is embedded or guessed from similarity, so the page it cites is the page it read.</p>
+    </div>
+  </section>
+
+  <section class="panel flip">
+    <div class="art" aria-hidden="true">
+      <svg viewBox="0 0 420 220" role="img" aria-label="A sentence with a citation chip pointing to a highlighted page">
+        <rect x="20" y="40" width="240" height="120" rx="12" fill="#FFFFFF" stroke="#D7DDE5"/>
+        <text x="36" y="70" font-family="IBM Plex Sans, Arial" font-size="13" fill="#12192B">≤4 nodules under 5 mm are not</text>
+        <text x="36" y="90" font-family="IBM Plex Sans, Arial" font-size="13" fill="#12192B">pulmonary metastatic disease;</text>
+        <text x="36" y="110" font-family="IBM Plex Sans, Arial" font-size="13" fill="#12192B">biopsy is not recommended.</text>
+        <rect x="36" y="122" width="168" height="22" rx="6" fill="#FFF8E5" stroke="#F5B14C"/>
+        <text x="120" y="137" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#7C3A07">FaR-RMS v2.0c · p. 57 · §3.1.1</text>
+        <path d="M204 133 C 250 133, 260 100, 300 100" fill="none" stroke="#F5B14C" stroke-width="2.5" stroke-dasharray="4 4"/>
+        <rect x="300" y="36" width="96" height="128" rx="6" fill="#FFFFFF" stroke="#D7DDE5"/>
+        <rect x="310" y="50" width="76" height="4" fill="#D7DDE5"/><rect x="310" y="60" width="70" height="4" fill="#D7DDE5"/><rect x="310" y="70" width="76" height="4" fill="#D7DDE5"/>
+        <rect x="308" y="82" width="80" height="22" rx="3" fill="#F5B14C" opacity=".8"/>
+        <rect x="310" y="112" width="60" height="4" fill="#D7DDE5"/><rect x="310" y="122" width="76" height="4" fill="#D7DDE5"/><rect x="310" y="132" width="40" height="4" fill="#D7DDE5"/>
+        <text x="348" y="184" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="12" fill="#6B7689">the page opens, sentence in yellow</text>
+      </svg>
+    </div>
+    <div class="copy">
+      <span class="eyebrow">2 · Every fact carries its page</span>
+      <h2>Click the chip, see the sentence.</h2>
+      <p>Each statement ends with a chip: protocol, version, page, section. Clicking it renders that page with the quoted passage highlighted, found by exact match, then fuzzy match, then the neighbouring page when a citation spans two. Thresholds arrive as a small card, one citation per row.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="art" aria-hidden="true">
+      <svg viewBox="0 0 420 220" role="img" aria-label="A clarify card with two options and a refusal stop sign">
+        <rect x="20" y="30" width="230" height="130" rx="12" fill="#FFFFFF" stroke="#D7DDE5"/>
+        <text x="36" y="56" font-family="IBM Plex Sans, Arial" font-size="11" fill="#156D84" letter-spacing="1.5">CLARIFY</text>
+        <text x="36" y="80" font-family="Source Serif 4, Georgia, serif" font-size="15" font-weight="600" fill="#12192B">150,000 WBC: which diagnosis?</text>
+        <rect x="36" y="98" width="92" height="30" rx="8" fill="#FFFFFF" stroke="#156D84" stroke-width="1.5"/>
+        <text x="82" y="117" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#156D84">AML · CHIP-AML22</text>
+        <rect x="138" y="98" width="96" height="30" rx="8" fill="#FFFFFF" stroke="#156D84" stroke-width="1.5"/>
+        <text x="186" y="117" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#156D84">ALL · ALLTogether1</text>
+        <!-- stop sign -->
+        <g transform="translate(330 95)">
+          <polygon points="-34,-14 -14,-34 14,-34 34,-14 34,14 14,34 -14,34 -34,14" fill="#B23A3A"/>
+          <text x="0" y="5" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="13" font-weight="600" fill="#FFFFFF">NOPE</text>
+        </g>
+        <text x="330" y="156" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#6B7689">“antihypertensive for a 65-year-old?”</text>
+        <text x="330" y="172" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#6B7689">adult medicine: refused, no advice</text>
+      </svg>
+    </div>
+    <div class="copy">
+      <span class="eyebrow">3 · It asks before it guesses, and it says no</span>
+      <h2>Two decisions before any search.</h2>
+      <p>Out of paediatric haemato-oncology? It refuses in one sentence and runs no tool. Patient described but a deciding fact missing (AML or ALL, risk group, age, MYCN status)? It asks with a card of options and waits. Only then does it read.</p>
+    </div>
+  </section>
+
+  <section class="panel flip">
+    <div class="art" aria-hidden="true">
+      <svg viewBox="0 0 420 240" role="img" aria-label="The protocol in the centre with external sources orbiting it">
+        <circle cx="210" cy="120" r="78" fill="none" stroke="#D7DDE5" stroke-dasharray="4 6"/>
+        <rect x="170" y="88" width="80" height="64" rx="8" fill="#156D84"/>
+        <text x="210" y="116" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="12" font-weight="600" fill="#F4F6F9">PROTOCOL</text>
+        <text x="210" y="134" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="11" fill="#F4F6F9">prevails</text>
+        <g font-family="IBM Plex Sans, Arial" font-size="11">
+          <g class="bob"><rect x="40" y="34" width="86" height="26" rx="8" fill="#E1EEF2" stroke="#156D84"/><text x="83" y="51" text-anchor="middle" fill="#156D84">PubMed</text></g>
+          <g class="bob" style="animation-delay:.4s"><rect x="300" y="24" width="96" height="26" rx="8" fill="#E1EEF2" stroke="#156D84"/><text x="348" y="41" text-anchor="middle" fill="#156D84">Web guidelines</text></g>
+          <g class="bob" style="animation-delay:.8s"><rect x="24" y="150" width="86" height="26" rx="8" fill="#E1EEF2" stroke="#156D84"/><text x="67" y="167" text-anchor="middle" fill="#156D84">FDA label</text></g>
+          <g class="bob" style="animation-delay:1.2s"><rect x="310" y="150" width="86" height="26" rx="8" fill="#E1EEF2" stroke="#156D84"/><text x="353" y="167" text-anchor="middle" fill="#156D84">CPIC · genes</text></g>
+          <g class="bob" style="animation-delay:1.6s"><rect x="166" y="200" width="88" height="26" rx="8" fill="#E1EEF2" stroke="#156D84"/><text x="210" y="217" text-anchor="middle" fill="#156D84">ClinVar</text></g>
+        </g>
+        <!-- collision flag -->
+        <g transform="translate(286 92)">
+          <rect x="0" y="0" width="22" height="22" rx="4" fill="#FFF8E5" stroke="#F5B14C"/>
+          <text x="11" y="16" text-anchor="middle" font-family="IBM Plex Sans, Arial" font-size="14" font-weight="600" fill="#7C3A07">!</text>
+        </g>
+      </svg>
+    </div>
+    <div class="copy">
+      <span class="eyebrow">4 · A second opinion, clearly labelled</span>
+      <h2>External evidence orbits the protocol. It never merges.</h2>
+      <p>When a complication, a co-medication or a gene matters, the assistant adds a separate block from PubMed, web guidelines, FDA labels, CPIC and ClinVar, each finding tagged with its source, and names the collisions. Example: an azole antifungal in a local SOP versus vincristine in ALLTogether1 induction. The protocol prevails; deviations go to the study team.</p>
+      <p><span class="chip">FaR-RMS v2.0c · p. 57</span> <span class="chip ext">PubMed 36689694 · 2023</span> <span class="chip ext">FDA label: vincristine</span></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="copy" style="margin-bottom:14px">
+      <span class="eyebrow">5 · Who does what</span>
+      <h2>One reader, one quick helper.</h2>
+    </div>
+    <div class="cast">
+      <div class="who">
+        <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="44" fill="#156D84"/><circle cx="36" cy="42" r="5" fill="#F4F6F9"/><circle cx="60" cy="42" r="5" fill="#F4F6F9"/><path d="M34 62 q14 12 28 0" stroke="#F4F6F9" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M26 28 q22 -20 44 0" stroke="#F5B14C" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+        <div><h3>Gemini 4 Argon: the reader</h3><ul><li>Decides scope, asks the clarifying question</li><li>Plans the sections, reads the pages, writes the cited answer</li><li>Judges when external evidence is needed and what collides</li><li>Same code locally, on Cloud Run and on Vertex AI Agent Engine</li></ul></div>
+      </div>
+      <div class="who">
+        <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="36" fill="#F5B14C"/><circle cx="38" cy="44" r="4" fill="#12192B"/><circle cx="58" cy="44" r="4" fill="#12192B"/><path d="M38 60 q10 8 20 0" stroke="#12192B" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M62 14 l10 -10 l-4 12 l10 2 l-12 6" fill="#12192B"/></svg>
+        <div><h3>Gemini 3.8 Flash: the quick helper</h3><ul><li>Runs the web-search sub-agent for guidelines and regulators</li><li>Wrote the one-line summary of every protocol section, once</li><li>Grades answers against the oncologist's references in both evaluations</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="copy" style="margin-bottom:14px">
+      <span class="eyebrow">6 · Proof</span>
+      <h2>Measured, not promised.</h2>
+    </div>
+    <div class="numbers">
+      <div class="num"><b>4,142</b><span>pages across 32 documents, navigated without an index</span></div>
+      <div class="num"><b>7 / 10</b><span>golden questions pass, 0 fail; partials are coverage, not errors</span></div>
+      <div class="num"><b>0.93</b><span>sentences supported by the cited pages on must-haves, Vertex AI evaluation</span></div>
+      <div class="num"><b>3 / 3</b><span>organisers' platform checks, their test file verbatim</span></div>
+    </div>
+  </section>
+
+  <footer>Open source, no patient data anywhere: <a href="https://github.com/Amineelfarssi/hacking-for-good-2026">github.com/Amineelfarssi/hacking-for-good-2026</a> · Solve with Google · Hacking for Good 2026, Ghent.</footer>
+</main>
+</head></html>
