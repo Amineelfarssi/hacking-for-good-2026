@@ -1,0 +1,23 @@
+# Source upload for Cloud Build (deploy/build.sh MODE=cloudbuild): code only, no deps, data or results.
+.git/
+.gcloudignore
+.venv/
+**/__pycache__/
+*.pyc
+data/
+eval/results/
+eval/*.json
+web/node_modules/
+web/.next/
+web/.design/
+web/.uploads/
+web/.feedback.jsonl
+.env
+.env.*
+!.env.example
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate*
+deploy/terraform/terraform.tfvars
+.agent_engine_tmp/
+app_tmp*/
+*.log
