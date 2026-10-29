@@ -50,9 +50,13 @@ async def main(only: set[str]) -> None:
         state = {"hospital": "UZG", "protocol_ids": [], "include_subprotocols": bool(row.get("include_subprotocols"))}
         session = await runner.session_service.create_session(app_name="eval", user_id="eval", state=state)
         t0 = time.time()
+        turns = row.get("turns") or [row["q"]]
         for attempt in range(3):  # the lab project has a small tokens-per-minute quota
             try:
-                answer, tools = await asyncio.wait_for(ask(runner, session.id, row["q"]), timeout=240)
+                answer, tools = "", []
+                for turn in turns:  # multi-turn questions run in the same session; the last answer is scored
+                    answer, t = await asyncio.wait_for(ask(runner, session.id, turn), timeout=240)
+                    tools += t
                 break
             except asyncio.TimeoutError:
                 answer, tools = "ERROR: timed out after 240 s", []

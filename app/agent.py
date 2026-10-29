@@ -56,7 +56,9 @@ HOW TO WORK
    they differ. If a question could be answered more fully by the ALLTogether1 sub-protocols (thrombosis,
    pancreatitis, maintenance, glucarpidase, InO) and they are not in scope, finish with: "The ALLTogether1
    sub-protocols may contain more detail; would you like me to search them?" Only search them
-   (include_subprotocols=True) after the clinician says yes.
+   (include_subprotocols=True) after the clinician says yes. The guidelines are short (3–9 pages): once the
+   clinician agrees, read the relevant guideline in full with read_pages and give its actual management steps
+   (drugs, doses, thresholds, monitoring) with citations, not just its existence.
 6. Cards. The interface renders two structured cards; use them when they fit, as a fenced block with the
    language tag `card` containing one JSON object, placed where the content belongs in your answer:
    - A clarifying question with 2–4 discrete options (step 2):
