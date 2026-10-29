@@ -36,6 +36,11 @@ Clinician ─ web/ (Next.js: Sources panel · Chat · Source viewer · Admin)
 6. `uv run scripts/eval.py` — runs the 9 golden questions and writes `eval/results/<timestamp>.md`.
 7. `uv run scripts/score.py` — rules + our Gemini judge → `eval/SCORECARD.md`; `uv run scripts/score_vertex.py [--dry-run]` — Google's Vertex AI Gen AI Evaluation Service (question_answering_quality, grounding, protocol_citation_completeness) → `eval/VERTEX_EVAL.md`.
 
+## Organisers' platform checks
+
+`uv run pytest -q tests/` runs the UC1 platform test the organisers sent (corpus on disk, protocols per hospital 27/21,
+PDF whitelist and page highlight) against the compatibility layer in `agents/uc1_oncoprotocol/`, no model calls.
+
 ## Layout
 
 ```
