@@ -3,7 +3,10 @@ import type { Protocol } from "@/lib/protocols";
 export type ViewerTarget = {
   protocol: Protocol;
   page: number;
+  /** The plain PDF (served by /api/pdf/<id>). */
   url: string;
+  /** The cited sentence, for the page highlighter. */
+  query?: string;
 };
 
 export type ChatMessage = {

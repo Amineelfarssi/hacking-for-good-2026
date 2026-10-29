@@ -76,7 +76,7 @@ export function AppShell() {
       }
       try {
         const url = await pdfUrl(protocol, urlCache.current);
-        setViewer({ protocol, page: c.page, url });
+        setViewer({ protocol, page: c.page, url, query: c.context });
       } catch {
         toast({ title: "Could not open the PDF", description: protocol.short_title, variant: "destructive" });
       }
