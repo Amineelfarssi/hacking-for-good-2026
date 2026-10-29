@@ -5,19 +5,20 @@ import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { linkifyCitations, type Citation } from "@/lib/citations";
+import { citationKey, linkifyCitations, type Citation } from "@/lib/citations";
 import { unwrapTextMath } from "@/lib/math";
 import { CitationChip } from "./citation-chip";
 
 type Props = {
   text: string;
+  activeCite?: string | null;
   onOpenCitation: (c: Citation) => void;
   /** Render as a span with no paragraph breaks (table cells). */
   inline?: boolean;
 };
 
 /** Streamed assistant text as markdown; citations become chips that open the source viewer; `$…$` renders as math. */
-export function AnswerMarkdown({ text, onOpenCitation, inline }: Props) {
+export function AnswerMarkdown({ text, activeCite, onOpenCitation, inline }: Props) {
   const { markdown, citations } = useMemo(() => linkifyCitations(unwrapTextMath(text)), [text]);
   const Wrapper = inline ? "span" : "div";
   return (
@@ -32,10 +33,11 @@ export function AnswerMarkdown({ text, onOpenCitation, inline }: Props) {
           a: ({ href, children }) => {
             if (href?.startsWith("cite:")) {
               const c = citations[Number(href.slice(5))];
-              if (c) return <CitationChip citation={c} onClick={() => onOpenCitation(c)} />;
+              if (c)
+                return <CitationChip citation={c} active={activeCite === citationKey(c)} onClick={() => onOpenCitation(c)} />;
             }
             return (
-              <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary-ink underline underline-offset-2">
                 {children}
               </a>
             );

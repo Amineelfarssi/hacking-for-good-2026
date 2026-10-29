@@ -19,8 +19,8 @@ export function DecisionFlowDrawer({ open, onOpenChange, message, question }: Pr
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[420px] max-w-full border-line bg-canvas p-0 sm:max-w-[420px]">
-        <SheetHeader className="space-y-1 border-b border-line bg-white px-5 py-4 text-left">
-          <SheetTitle className="flex items-center gap-2 font-heading text-base font-semibold text-ink">
+        <SheetHeader className="space-y-1 border-b border-divider bg-surface px-5 py-4 text-left">
+          <SheetTitle className="flex items-center gap-2 font-serif text-[17px] font-semibold text-ink">
             <GitBranch className="size-4 text-primary" />
             Decision flow
           </SheetTitle>
@@ -79,12 +79,12 @@ function FlowStep({ node, pulse }: { node: FlowNode; pulse: boolean }) {
     <li className={cn("relative pb-5 last:pb-0 animate-fade-up", muted && "opacity-60")}>
       <span
         className={cn(
-          "absolute -left-[27px] top-1 flex size-4 items-center justify-center rounded-md border bg-white",
-          node.status === "done" && "border-primary bg-primary text-white",
+          "absolute -left-[27px] top-1 flex size-4 items-center justify-center rounded-md border bg-surface",
+          node.status === "done" && "border-primary bg-primary text-primary-foreground",
           node.status === "active" && "border-primary text-primary",
           muted && "border-line text-ink-faint",
-          terminal?.tone === "refused" && "border-destructive bg-destructive text-white",
-          terminal?.tone === "clarify" && "border-cite bg-cite text-white",
+          terminal?.tone === "refused" && "border-destructive bg-destructive text-destructive-foreground",
+          terminal?.tone === "clarify" && "border-caution bg-caution text-white",
         )}
       >
         {node.status === "done" ? <Check className="size-3" strokeWidth={3} /> : node.status === "active" ? <Loader2 className="size-3 animate-spin" /> : <CircleDashed className="size-3" />}
@@ -120,13 +120,13 @@ function Branch({ b, decided }: { b: FlowBranch; decided: boolean }) {
     b.tone === "refused"
       ? "border-destructive/50 bg-destructive/10 text-destructive"
       : b.tone === "clarify"
-        ? "border-cite-line bg-cite-bg text-cite-ink"
-        : "border-primary/50 bg-primary/[0.08] text-primary";
+        ? "border-caution/40 bg-caution-soft text-caution"
+        : "border-primary/40 bg-primary-soft text-primary-ink";
   return (
     <div
       className={cn(
         "rounded-lg border px-2.5 py-1.5 text-xs",
-        b.chosen ? tone : "border-line bg-white text-ink-faint",
+        b.chosen ? tone : "border-line bg-surface text-ink-faint",
         decided && !b.chosen && "line-through decoration-line/80 opacity-60",
       )}
     >

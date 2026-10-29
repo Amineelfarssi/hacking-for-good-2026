@@ -11,3 +11,6 @@ eval/results/
 data/uc1/
 .agent_engine_tmp/
 app_tmp*/
+
+# IDE
+.idea/

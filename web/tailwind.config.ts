@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-// Token names match the components/ui primitives; values live in app/globals.css.
+// Token names match the components/ui primitives and the theme in app/globals.css.
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
@@ -14,12 +14,12 @@ export default {
 	theme: {
 		extend: {
 			fontFamily: {
-				sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-				heading: ["var(--font-heading)", "Georgia", "serif"],
-			},
-			fontSize: {
-				xs: ["var(--fs-xs, 0.75rem)", { lineHeight: "1rem" }],
-				sm: ["var(--fs-sm, 0.875rem)", { lineHeight: "1.25rem" }],
+				// Interface: Avenir Next where installed (every Mac), else Nunito Sans.
+				sans: ['"Avenir Next"', "Avenir", "var(--font-sans-fallback)", "system-ui", "sans-serif"],
+				// Protocol content (answers, document titles): Tiempos where installed, else Source Serif 4.
+				serif: ['"Tiempos Text"', "var(--font-serif-fallback)", "Georgia", "serif"],
+				// Large headings: Tiempos Headline is drawn for display sizes.
+				display: ['"Tiempos Headline"', '"Tiempos Text"', "var(--font-serif-fallback)", "Georgia", "serif"],
 			},
 			borderRadius: {
 				lg: "var(--radius)",
@@ -39,8 +39,9 @@ export default {
 				},
 				primary: {
 					DEFAULT: "hsl(var(--primary) / <alpha-value>)",
-					foreground: "hsl(var(--primary-foreground))",
+					foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
 					ink: "hsl(var(--primary-ink) / <alpha-value>)",
+					soft: "hsl(var(--primary-soft) / <alpha-value>)",
 				},
 				secondary: {
 					DEFAULT: "hsl(var(--secondary))",
@@ -61,14 +62,13 @@ export default {
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",
-				// Citation / highlight accent (amber): chips, highlighted-passage badge.
-				cite: {
-					DEFAULT: "hsl(var(--cite) / <alpha-value>)",
-					ink: "hsl(var(--cite-ink) / <alpha-value>)",
-					bg: "hsl(var(--cite-bg) / <alpha-value>)",
-					line: "hsl(var(--cite-line) / <alpha-value>)",
+				// Values live in globals.css; each has a dark counterpart.
+				surface: "hsl(var(--surface) / <alpha-value>)",
+				eosin: "hsl(var(--eosin) / <alpha-value>)",
+				caution: {
+					DEFAULT: "hsl(var(--caution) / <alpha-value>)",
+					soft: "hsl(var(--caution-soft) / <alpha-value>)",
 				},
-				// Neutral surfaces. Values live in globals.css.
 				canvas: "hsl(var(--canvas) / <alpha-value>)",
 				sunken: "hsl(var(--sunken) / <alpha-value>)",
 				line: "hsl(var(--line) / <alpha-value>)",
@@ -86,9 +86,14 @@ export default {
 					"0%": { opacity: "0", transform: "translateY(6px)" },
 					"100%": { opacity: "1", transform: "translateY(0)" },
 				},
+				"slide-in-right": {
+					"0%": { opacity: "0", transform: "translateX(16px)" },
+					"100%": { opacity: "1", transform: "translateX(0)" },
+				},
 			},
 			animation: {
 				"fade-up": "fade-up 420ms cubic-bezier(.2,.8,.2,1) both",
+				"slide-in-right": "slide-in-right 240ms cubic-bezier(.2,.8,.2,1) both",
 			},
 		},
 	},

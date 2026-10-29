@@ -117,3 +117,8 @@ export function resolveCitation(doc: string, protocols: Protocol[]): Protocol | 
     });
   return byKey((p) => norm(p.short_title)) ?? byKey((p) => norm(p.full_title));
 }
+
+/** Identifies one cited page, so the chip and the "Sources cited" entry open in the viewer can be marked. */
+export function citationKey(c: Pick<Citation, "doc" | "page">): string {
+  return `${norm(c.doc)}|${c.page}`;
+}
