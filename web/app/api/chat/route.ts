@@ -62,7 +62,7 @@ export async function POST(req: Request) {
         const upstream = await openAdkStream(sessionId, state, message, req.signal);
         if (!upstream) {
           send({ type: "session", session_id: sessionId, mock: true });
-          await streamMockAnswer(send, req.signal);
+          await streamMockAnswer(send, req.signal, message);
         } else {
           send({ type: "session", session_id: sessionId, mock: false });
           await forwardAdkEvents(upstream, send);
@@ -269,7 +269,19 @@ If the diagnosis is ALL rather than AML, the relevant guidance lives in a differ
 {"type":"clarify","question":"Which diagnosis applies?","options":[{"label":"AML — CHIP-AML22","send":"AML, treated on CHIP-AML22"},{"label":"ALL — ALLTogether1","send":"ALL, treated on ALLTogether1"}]}
 \`\`\``;
 
-async function streamMockAnswer(send: (e: UiEvent) => void, signal: AbortSignal) {
+/** Out-of-scope questions (adult, non-oncology) are refused without any search, as the real agent does. */
+const MOCK_REFUSAL = `I cannot answer this question: it falls outside the paediatric haemato-oncology protocols this assistant searches. Please consult the relevant adult or general guideline.`;
+
+async function streamMockAnswer(send: (e: UiEvent) => void, signal: AbortSignal, message: string) {
+  if (/\b(adult|hypertension|asthma|\d{2,3}[- ]year[- ]old)\b/i.test(message) && !/\b([0-9]|1[0-7])[- ]year/i.test(message)) {
+    await sleep(400, signal);
+    for (const word of MOCK_REFUSAL.split(/(?<=\s)/)) {
+      if (signal.aborted) return;
+      send({ type: "delta", text: word });
+      await sleep(18, signal);
+    }
+    return;
+  }
   // Two mock tool rounds so the trail can be seen offline: one search, one read.
   const sections = [
     { protocol_id: "chip-aml22", protocol: "CHIP-AML22", section: "Hyperleukocytosis", pages: [91, 92], matches: 3 },

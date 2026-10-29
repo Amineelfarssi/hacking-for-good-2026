@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GitBranch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import type { Protocol, ProtocolsResponse } from "@/lib/protocols";
@@ -24,6 +26,7 @@ export function AppShell() {
   const [viewer, setViewerState] = useState<ViewerTarget | null>(null);
   const [sourcesOpen, setSourcesOpen] = useState(true);
   const [viewerOpen, setViewerOpen] = useState(true);
+  const [flowSignal, setFlowSignal] = useState(0);
   // Opening a page always reveals the viewer; Escape hides it.
   const setViewer = useCallback((t: ViewerTarget) => {
     setViewerState(t);
@@ -137,7 +140,11 @@ export function AppShell() {
         <p className="page-subtitle hidden min-w-0 truncate md:block">
           Grounded search over BSPHO paediatric haemato-oncology protocols. Cites document and page; never guesses.
         </p>
-        <Badge variant="outline" className="ml-auto whitespace-nowrap border-line bg-sunken font-normal text-ink-soft">
+        <Button variant="outline" size="sm" className="ml-auto h-8 rounded-[10px] bg-white px-2.5 text-xs" onClick={() => setFlowSignal(Date.now())}>
+          <GitBranch className="!size-3.5 text-primary" />
+          Decision flow
+        </Button>
+        <Badge variant="outline" className="whitespace-nowrap border-line bg-sunken font-normal text-ink-soft">
           Search utility, not a medical device
         </Badge>
       </header>
@@ -181,6 +188,7 @@ export function AppShell() {
                 onOpenCitation={openCitation}
                 onOpenPage={openPage}
                 onNewConversation={newConversation}
+                flowSignal={flowSignal}
               />
             </section>
             <section className="min-h-0 min-w-0">
