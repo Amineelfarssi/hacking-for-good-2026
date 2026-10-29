@@ -1,56 +1,53 @@
-# Hacking for Good 2026 — Protocol Assistant
+# OncoProtocol Assist — Hacking for Good 2026
 
 Solve with Google hackathon, edition 3. Google Cloud + Google Research + BSPHO
-(Belgian Society of Paediatric Haematology and Oncology).
-29 Oct 2026, 09:00–18:00, Wintercircus, Ghent. Showcase 16:30–17:15.
+(Belgian Society of Paediatric Haematology and Oncology). 29 Oct 2026, Wintercircus, Ghent.
 
 **Use case 1 — Virtual Assistant in Pediatric Hematology & Oncology.**
-A grounded search assistant over clinical trial protocols and institutional
-documents. A clinician asks a question in plain language; the assistant answers
-from the documents only and cites document + page for every claim.
+Paediatric oncologists search by hand through 27 trial protocols (150–300 pages each) for one criterion,
+threshold or timepoint. This assistant answers from those protocols only, cites document and page on every
+claim, asks a clarifying question when the answer depends on protocol, risk group, age or phase, and refuses
+anything outside paediatric haemato-oncology. Two filters frame every question: the hospital (a mapping table
+says which of the 6 Belgian centres run which protocol) and the clinician's own selection of protocols.
 
-No patient data, no PII: the hackathon materials contain none and this repo must
-never hold any.
+No patient data, no PII: the corpus is protocols and guidelines, every case is a synthetic vignette.
 
-## What we reuse from RxNote (not from scratch)
+## Architecture
 
-| Hackathon piece | RxNote origin | What changes |
-|---|---|---|
-| Agent + tools + citation prompt | `rx-note-web/agents/chat` (Strands on Bedrock) | Google ADK on Gemini; Vertex AI Search replaces the Postgres tools |
-| PDF → pages → index | `rx-note-web/lambdas/ingest-document`, `analyzer` | GCS bucket + Vertex AI Search datastore (layout parsing built in) |
-| "cite [doc p:N], never guess" discipline | chat agent system prompt | kept verbatim in spirit, see `app/agent.py` |
-| Grounded-answer eval | `rx-note-web/lib/evals` golden-set idea | `eval/questions.jsonl` + `scripts/eval.py` |
+```
+27 master protocols + 5 ALLTogether1 sub-protocols (PDF)
+   └─ scripts/build_manifest.py  → data/uc1/manifest.jsonl  (id, titles, kind, hospitals, version)
+   └─ scripts/ingest.py          → GCS bucket → Vertex AI Search datastore (layout parser, page chunks, metadata)
 
-## Stack
+Clinician ─ web/ (Next.js: Sources panel · Chat · Source viewer · Admin)
+              └─ /api/chat ──SSE──▶ adk api_server (app/)  ── Gemini on Vertex AI
+                                        ├─ list_protocols(hospital)            Tier 1: hospital filter
+                                        └─ search_protocols(query, ids, subs)  Tier 2: selected protocols,
+                                                                               chunks with page numbers
+```
 
-Google ADK (Python) · Gemini on Vertex AI · Vertex AI Search (Discovery Engine)
-· Cloud Storage · uv. Qwiklabs project: see `.env.example`.
+## Run
 
-## Run order (day plan)
-
-1. `gcloud auth login` as the Qwiklabs student, then `cp .env.example .env`.
+1. `gcloud auth login` and `gcloud auth application-default login` with the lab account; `cp .env.example .env`.
 2. `scripts/setup-gcp.sh` — project, APIs, bucket.
-3. Drop the organisers' PDFs in `data/docs/` (git-ignored), then
-   `uv run scripts/ingest.py` — uploads to GCS, creates the datastore + engine, imports.
-4. `uv run adk web app` — chat UI at http://localhost:8000 with the datastore.
-5. Fill `eval/questions.jsonl` with 10 questions a clinician would ask;
-   `uv run scripts/eval.py` prints answer + citations per question for the demo.
-6. Showcase: 3 questions live, show the cited page, show one "not in the documents".
+3. `gcloud storage cp -r "gs://swg-workshop/use-case/1. Virtual Assistant/*" data/uc1/` (git-ignored).
+4. `uv run scripts/build_manifest.py` then `uv run scripts/ingest.py` — upload + metadata import (indexing takes minutes).
+5. `uv run adk api_server app` (port 8000) and, in `web/`, `pnpm install && pnpm dev` (port 3000).
+6. `uv run scripts/eval.py` — runs the 9 golden questions and writes `eval/results/<timestamp>.md`.
 
 ## Layout
 
 ```
-app/           ADK agent (root_agent) — the thing `adk web` serves
-scripts/       setup-gcp.sh, ingest.py, eval.py
-data/docs/     source PDFs (git-ignored)
-eval/          questions.jsonl
-docs/          USE-CASE.md (brief), DEMO.md (showcase script)
+app/        ADK agent (root_agent) + tools
+scripts/    setup-gcp.sh, build_manifest.py, ingest.py, eval.py
+web/        Next.js UI (Sources · Chat · Viewer · Admin)
+data/uc1/   corpus, manifest (git-ignored)
+eval/       golden questions
+docs/       USE-CASE.md (brief), DEMO.md (showcase script)
 ```
 
-## Verified in the Qwiklabs project (29 Oct, morning)
+## Verified in the lab project (29 Oct, morning)
 
-Project `qwiklabs-gcp-04-15e7fd834427`, APIs enabled, bucket created. Gemini ids that answer:
+APIs enabled, bucket created, datastore `bspho-protocols` created. Gemini ids that answer:
 `gemini-2.5-flash` (europe-west1, europe-west4, global), `gemini-2.5-pro` (global),
-`gemini-3-flash-preview` (global), `gemini-3.1-flash-lite` (global). Default stays
-`gemini-2.5-flash` in `europe-west1`; to try the newer preview set `GEMINI_MODEL=gemini-3-flash-preview`
-and `GOOGLE_CLOUD_LOCATION=global` in `.env`.
+`gemini-3-flash-preview` (global), `gemini-3.1-flash-lite` (global). Default `gemini-2.5-flash` in `europe-west1`.

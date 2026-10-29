@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Tokens copied from rx-note-web/app/globals.css (29 Oct 2026): the shadcn base
+ * set, the calm dashboard palette and the `[data-app-theme="calm"]` override.
+ * The root layout always renders the marker, so the whole app is the calm theme.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 0 91% 71%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 0 91% 71%;
+    --radius: 0.5rem;
+
+    /* Calm dashboard palette: warm paper instead of clinical white. */
+    --canvas: 36 24% 96%;    /* #F7F5F2 page ground   */
+    --sunken: 38 26% 92%;    /* #EFEBE4 hover / chips */
+    --line: 37 21% 88%;      /* #E7E2DA hairlines     */
+    --divider: 33 19% 91%;   /* #ECE8E3 pane + card edges */
+    --hairline: 33 26% 93%;  /* #F2EEE9 rows inside a card */
+    --selected: 206 47% 94%; /* #EAF2F8 selected row */
+    --ink: 40 10% 18%;       /* #33302A text, primary */
+    --ink-soft: 38 8% 39%;   /* #6B655B secondary     */
+    --ink-faint: 37 8% 58%;  /* #9C958A tertiary      */
+    --primary-ink: 0 70% 17%; /* #4A0D0D text on the rose primary */
+  }
+
+  /* The calm theme. `:has()` lifts the tokens to <html> so Radix portals
+     (select menus, tooltips, toasts) mounted on <body> get them too. */
+  html:has([data-app-theme="calm"]) {
+    --background: var(--canvas);
+    --foreground: var(--ink);
+    --card: 0 0% 100%;
+    --card-foreground: var(--ink);
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--ink);
+    --primary: 0 91% 71%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: var(--sunken);
+    --secondary-foreground: var(--ink);
+    --muted: var(--sunken);
+    --muted-foreground: var(--ink-soft);
+    --accent: var(--sunken);
+    --accent-foreground: var(--ink);
+    --border: var(--line);
+    --input: var(--line);
+    --ring: 0 91% 71%;
+    --radius: 0.625rem;
+    --fs-sm: 0.84375rem;
+    --fs-xs: 0.78125rem;
+  }
+
+  html:has([data-app-theme="calm"]) body {
+    font-size: 14px;
+  }
+
+  html:has([data-app-theme="calm"]) :is(h1, h2, h3) {
+    letter-spacing: -0.015em;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  *:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 1px hsl(var(--ring) / 0.35) !important;
+  }
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    border-color: hsl(var(--ring) / 0.5) !important;
+    box-shadow: none !important;
+  }
+}
+
+@layer components {
+  .page-title {
+    @apply text-[22px] font-semibold leading-7 text-ink;
+    letter-spacing: -0.022em;
+  }
+  .page-subtitle {
+    @apply mt-1 text-[13.5px] font-normal leading-5 text-ink-soft;
+  }
+  .surface {
+    @apply rounded-2xl border border-line bg-canvas;
+  }
+  .section-title {
+    @apply mb-3 text-[15px] font-medium leading-6 text-ink;
+  }
+
+  /* A streamed answer: markdown rendered in the calm palette. */
+  .answer-md {
+    @apply text-[14px] leading-6 text-ink;
+  }
+  .answer-md p { @apply my-2; }
+  .answer-md p:first-child { @apply mt-0; }
+  .answer-md p:last-child { @apply mb-0; }
+  .answer-md ul { @apply my-2 list-disc pl-5; }
+  .answer-md ol { @apply my-2 list-decimal pl-5; }
+  .answer-md li { @apply my-0.5; }
+  .answer-md h1, .answer-md h2, .answer-md h3 { @apply mb-1 mt-3 text-[14px] font-semibold; }
+  .answer-md strong { @apply font-semibold; }
+  .answer-md code { @apply rounded-md bg-sunken px-1 py-0.5 text-[12.5px]; }
+  .answer-md table { @apply my-2 w-full border-collapse text-[13px]; }
+  .answer-md th, .answer-md td { @apply border border-line px-2 py-1 text-left align-top; }
+  .answer-md th { @apply bg-sunken font-medium; }
+  .answer-md blockquote { @apply my-2 border-l-2 border-line pl-3 text-ink-soft; }
+}
