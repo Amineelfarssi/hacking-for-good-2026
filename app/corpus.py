@@ -36,7 +36,14 @@ def _fetch_from_gcs() -> None:
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     PAGES_DIR.mkdir(parents=True, exist_ok=True)
-    bucket.blob(key("manifest.jsonl")).download_to_filename(MANIFEST)
+    # download to a temp name and rename: a failed download (e.g. IAM not yet propagated) must not leave an
+    # empty manifest behind, or every later load() would see zero protocols without any error
+    tmp = MANIFEST.with_suffix(".jsonl.part")
+    bucket.blob(key("manifest.jsonl")).download_to_filename(tmp)
+    if tmp.stat().st_size == 0:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"empty manifest downloaded from {GCS_URI}")
+    tmp.replace(MANIFEST)
     for blob in client.list_blobs(bucket, prefix=key("pages/")):
         if blob.name.endswith(".json"):
             blob.download_to_filename(PAGES_DIR / Path(blob.name).name)
@@ -96,7 +103,7 @@ def load(force: bool = False) -> dict[str, Protocol]:
         if _protocols and not force:
             return _protocols
         _protocols.clear()
-        if GCS_URI and not MANIFEST.exists():
+        if GCS_URI and (not MANIFEST.exists() or MANIFEST.stat().st_size == 0):
             _fetch_from_gcs()
         for line in MANIFEST.read_text().splitlines():
             if not line.strip():
