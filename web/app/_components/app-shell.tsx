@@ -65,6 +65,7 @@ export function AppShell() {
   );
   const masters = useMemo(() => available.filter((p) => p.kind === "master"), [available]);
   const subs = useMemo(() => available.filter((p) => p.kind === "sub"), [available]);
+  const locals = useMemo(() => available.filter((p) => p.kind === "local"), [available]);
 
   const selected = useMemo(
     () => new Set(available.filter((p) => !deselected.has(p.id)).map((p) => p.id)),
@@ -80,7 +81,7 @@ export function AppShell() {
   }, []);
 
   const protocolIds = useMemo(
-    () => available.filter((p) => selected.has(p.id) && (includeSubs || p.kind === "master")).map((p) => p.id),
+    () => available.filter((p) => selected.has(p.id) && (includeSubs || p.kind !== "sub")).map((p) => p.id),
     [available, selected, includeSubs],
   );
 
@@ -169,6 +170,8 @@ export function AppShell() {
                 onHospitalChange={changeHospital}
                 masters={masters}
                 subs={subs}
+                locals={locals}
+                onUploaded={loadProtocols}
                 totalMasters={(data?.protocols ?? []).filter((p) => p.kind === "master").length}
                 selected={selected}
                 onSelectedChange={setSelected}

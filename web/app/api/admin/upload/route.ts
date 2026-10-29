@@ -5,7 +5,8 @@ import { HOSPITALS } from "@/lib/protocols";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/admin/upload  multipart { file, short_title, kind, hospitals[] } → { ok, id, pages }.
+ * POST /api/admin/upload  multipart { file, short_title, kind: master|sub|local, hospitals[] } → { ok, id, pages }.
+ * `local` is a clinician-uploaded institutional document (SOP, local guideline), scoped to its hospital.
  * Proxies POST {ADK_URL}/admin/upload (hospitals joined with commas); the server extracts the page text and
  * adds the manifest row, so the protocol is searchable at once.
  */
@@ -18,7 +19,8 @@ export async function POST(req: Request) {
   }
   const file = form.get("file");
   const shortTitle = String(form.get("short_title") ?? "").trim();
-  const kind = form.get("kind") === "sub" ? "sub" : "master";
+  const rawKind = form.get("kind");
+  const kind = rawKind === "sub" ? "sub" : rawKind === "local" ? "local" : "master";
   const hospitals = form
     .getAll("hospitals")
     .flatMap((h) => String(h).split(","))

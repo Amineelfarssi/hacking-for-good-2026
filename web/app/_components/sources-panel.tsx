@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, FileText, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { ChevronDown, FileText, PanelLeftClose, PanelLeftOpen, Search, Upload } from "lucide-react";
+import { UploadDocumentDialog } from "./upload-document-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +19,9 @@ type Props = {
   onHospitalChange: (h: string) => void;
   masters: Protocol[];
   subs: Protocol[];
+  /** Clinician-uploaded institutional documents at this hospital. */
+  locals: Protocol[];
+  onUploaded: () => Promise<unknown>;
   totalMasters: number;
   selected: Set<string>;
   onSelectedChange: (s: Set<string>) => void;
@@ -54,6 +58,8 @@ function OpenPanel({
   onHospitalChange,
   masters,
   subs,
+  locals,
+  onUploaded,
   totalMasters,
   selected,
   onSelectedChange,
@@ -65,11 +71,14 @@ function OpenPanel({
   const [filter, setFilter] = useState("");
   const [mastersOpen, setMastersOpen] = useState(true);
   const [subsOpen, setSubsOpen] = useState(true);
+  const [localsOpen, setLocalsOpen] = useState(true);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const q = filter.trim().toLowerCase();
   const match = (p: Protocol) => !q || p.short_title.toLowerCase().includes(q) || p.full_title.toLowerCase().includes(q);
   const shownMasters = masters.filter(match);
   const shownSubs = subs.filter(match);
+  const shownLocals = locals.filter(match);
 
   const toggle = (id: string, on: boolean) => {
     const next = new Set(selected);
@@ -139,6 +148,25 @@ function OpenPanel({
           {loading && <Empty text="Loading…" />}
         </Group>
 
+        {locals.length > 0 && (
+          <div className="mt-2">
+            <Group
+              open={localsOpen}
+              onOpenChange={setLocalsOpen}
+              title={`Uploaded documents (${locals.length})`}
+              selectedCount={count(locals)}
+              total={locals.length}
+              onAll={() => setAll(locals, true)}
+              onNone={() => setAll(locals, false)}
+            >
+              {shownLocals.map((p) => (
+                <ProtocolRow key={p.id} p={p} checked={selected.has(p.id)} onCheck={(on) => toggle(p.id, on)} onOpen={() => onOpenProtocol(p)} badge="local" />
+              ))}
+              {shownLocals.length === 0 && <Empty text="No match." />}
+            </Group>
+          </div>
+        )}
+
         <div className="mt-2 flex h-8 items-center justify-between pl-2 pr-2">
           <label htmlFor="include-subs" className="text-xs text-ink-soft">
             Include sub-protocols
@@ -162,6 +190,18 @@ function OpenPanel({
           </Group>
         )}
       </div>
+
+      <div className="shrink-0 border-t border-line p-2">
+        <button
+          type="button"
+          onClick={() => setUploadOpen(true)}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-xs text-ink-soft hover:bg-sunken hover:text-ink"
+        >
+          <Upload className="size-3.5" />
+          Upload a document
+        </button>
+      </div>
+      <UploadDocumentDialog open={uploadOpen} onOpenChange={setUploadOpen} hospital={hospital} onUploaded={onUploaded} />
     </div>
   );
 }
@@ -213,7 +253,7 @@ function Empty({ text }: { text: string }) {
   return <li className="px-2 py-2 text-xs text-ink-faint">{text}</li>;
 }
 
-function ProtocolRow({ p, checked, onCheck, onOpen }: { p: Protocol; checked: boolean; onCheck: (on: boolean) => void; onOpen: () => void }) {
+function ProtocolRow({ p, checked, onCheck, onOpen, badge }: { p: Protocol; checked: boolean; onCheck: (on: boolean) => void; onOpen: () => void; badge?: string }) {
   const inputId = `proto-${p.id}`;
   return (
     <li className="group flex h-7 items-center gap-2 rounded-md pl-2 pr-1 hover:bg-sunken">
@@ -223,6 +263,7 @@ function ProtocolRow({ p, checked, onCheck, onOpen }: { p: Protocol; checked: bo
           {p.short_title}
         </span>
         {p.version && <span className="shrink-0 text-xs text-ink-faint">v{p.version}</span>}
+        {badge && <span className="shrink-0 rounded-md border border-line bg-sunken px-1 text-[11px] leading-4 text-ink-faint">{badge}</span>}
       </label>
       <Tooltip>
         <TooltipTrigger asChild>

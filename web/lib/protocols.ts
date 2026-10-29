@@ -5,7 +5,8 @@ export type Protocol = {
   id: string;
   short_title: string;
   full_title: string;
-  kind: "master" | "sub";
+  /** master protocol, sub-protocol guideline, or a clinician-uploaded institutional document. */
+  kind: "master" | "sub" | "local";
   version: string;
   hospitals: string[];
   pages?: number;
@@ -50,7 +51,7 @@ function normalise(raw: Record<string, unknown>): Protocol {
     id: String(raw.id ?? slugify(shortTitle)),
     short_title: shortTitle,
     full_title: fullTitle,
-    kind: raw.kind === "sub" ? "sub" : "master",
+    kind: raw.kind === "sub" ? "sub" : raw.kind === "local" ? "local" : "master",
     version: raw.version == null ? versionFrom(fullTitle) ?? "" : String(raw.version),
     hospitals,
     pages: typeof raw.pages === "number" ? raw.pages : undefined,
