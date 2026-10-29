@@ -45,7 +45,7 @@ def section_inputs(p: corpus.Protocol) -> list[dict]:
 
 
 def main(force: bool) -> None:
-    client = genai.Client()
+    client = genai.Client(http_options=types.HttpOptions(timeout=120_000))  # ms; a hung call must not stall the batch
     for p in corpus.load().values():
         path = corpus.PAGES_DIR / f"{p.id}.json"
         doc = json.loads(path.read_text())
