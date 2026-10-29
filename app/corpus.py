@@ -20,6 +20,29 @@ MANIFEST = ROOT / "manifest.jsonl"
 _lock = threading.Lock()
 
 HEADING = re.compile(r"^(\d{1,2}(?:\.\d{1,2}){0,2})\.?\s+([A-Z][^\n]{3,90})$", re.M)
+# a table-of-contents line: "12.1 Pulmonary metastases ........ 58" or "12.1 Pulmonary metastases 58"
+TOC_LINE = re.compile(r"^\s*(\d{1,2}(?:\.\d{1,2}){0,2})\.?\s+(.{3,110}?)\s*(?:\.{2,}|…|\s)\s*(\d{1,3})\s*$", re.M)
+
+
+def toc_of(p: "Protocol", limit: int = 150) -> list[dict]:
+    """Parse the protocol's own table of contents (first 8% of pages) into (title, page)."""
+    out, seen, last = [], set(), 0
+    for page in p.pages[: max(6, len(p.pages) // 12)]:
+        lines = TOC_LINE.findall(page["text"])
+        kept = []
+        for num, title, pg in lines:
+            pg = int(pg)
+            if num in seen or num.count(".") > 1 or pg < last or pg > len(p.pages):
+                continue  # a real TOC has non-decreasing page numbers; numbered list items do not
+            kept.append((num, title, pg))
+            last = pg
+        if len(kept) < 6:
+            last = out[-1]["page"] if out else 0
+            continue
+        for num, title, pg in kept:
+            seen.add(num)
+            out.append({"title": f"{num} {title.strip(' .')}", "page": pg})
+    return out[:limit]
 
 
 @dataclass
@@ -76,15 +99,22 @@ def at_hospital(hospital: str, include_sub: bool = False) -> list[Protocol]:
 
 
 def outline_of(p: Protocol, limit: int = 150) -> list[dict]:
-    if p.outline:
+    if len(p.outline) >= 8:
         items = [o for o in p.outline if o.get("depth", 0) <= 1] or p.outline
         return [{"title": o["title"], "page": o["page"]} for o in items[:limit]]
+    toc = toc_of(p, limit)
+    if len(toc) >= 8:
+        return toc
     seen, out = set(), []
     for page in p.pages[3:]:  # skip cover / signature pages
+        on_page = 0
         for m in HEADING.finditer(page["text"]):
             key, title = m.group(1), m.group(2)
             if key in seen or key.count(".") > 1 or len(title.split()) < 2 or re.search(r"\d{3,}|@|\+\d", title):
                 continue
+            on_page += 1
+            if on_page > 2:  # three or more numbered lines on one page is a list, not headings
+                break
             seen.add(key)
             out.append({"title": f"{m.group(1)} {m.group(2).strip()}", "page": page["n"]})
             if len(out) >= limit:

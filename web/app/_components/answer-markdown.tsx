@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { linkifyCitations, type Citation } from "@/lib/citations";
 import { CitationChip } from "./citation-chip";
@@ -13,6 +13,8 @@ export function AnswerMarkdown({ text, onOpenCitation }: { text: string; onOpenC
     <div className="answer-md">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        // react-markdown drops unknown URL schemes; keep our internal cite: links.
+        urlTransform={(url) => (url.startsWith("cite:") ? url : defaultUrlTransform(url))}
         components={{
           a: ({ href, children }) => {
             if (href?.startsWith("cite:")) {

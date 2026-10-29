@@ -10,6 +10,9 @@ export type Protocol = {
   version: string;
   hospitals: string[];
   gcs_uri: string;
+  /** Path relative to the manifest's folder (lane A's local copy), when the PDF is on disk. */
+  file?: string;
+  pages?: number;
 };
 
 export type ProtocolsResponse = {
@@ -47,7 +50,8 @@ function mock(
 
 /** Where the manifest lives: MANIFEST_PATH, else ../data/uc1/manifest.jsonl next to web/. */
 export function manifestPath(): string {
-  return path.resolve(process.cwd(), process.env.MANIFEST_PATH ?? "../data/uc1/manifest.jsonl");
+  // turbopackIgnore: the path comes from the environment; tracing it would bundle the whole repo.
+  return path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.MANIFEST_PATH ?? "../data/uc1/manifest.jsonl");
 }
 
 /** Rows added through the Admin tab when the manifest is not writable. */
@@ -95,7 +99,29 @@ function normalise(raw: Record<string, unknown>): Protocol {
     version: String(raw.version ?? versionFrom(fullTitle) ?? versionFrom(String(raw.gcs_uri ?? "")) ?? ""),
     hospitals,
     gcs_uri: String(raw.gcs_uri ?? ""),
+    file: typeof raw.file === "string" && raw.file ? raw.file : undefined,
+    pages: typeof raw.pages === "number" ? raw.pages : undefined,
   };
+}
+
+/** The local PDF for a manifest row, or an admin upload, if it is on disk. Never leaves the data folder. */
+export async function localPdfPath(p: Protocol): Promise<string | undefined> {
+  const candidates: string[] = [];
+  if (p.file) {
+    const root = path.dirname(manifestPath());
+    const resolved = path.resolve(root, p.file);
+    if (resolved.startsWith(root + path.sep)) candidates.push(resolved);
+  }
+  candidates.push(path.join(uploadsDir(), `${p.id}.pdf`));
+  for (const c of candidates) {
+    try {
+      await fs.access(c, fs.constants.R_OK);
+      return c;
+    } catch {
+      // try the next one
+    }
+  }
+  return undefined;
 }
 
 export function versionFrom(text: string): string | undefined {

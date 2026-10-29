@@ -5,12 +5,15 @@ import os
 
 from dotenv import load_dotenv
 from google.adk.agents import Agent
+from google.genai import types
 
 from app.tools import get_outline, list_protocols, read_pages, search_pages
 
 load_dotenv()
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-4-argon")          # reasoning model for the agent
+FAST_MODEL = os.environ.get("GEMINI_FAST_MODEL", "gemini-3.8-flash")  # for quick, non-agentic work
+THINKING = os.environ.get("GEMINI_THINKING", "low")                # low keeps answers under ~10 s
 
 REFUSAL = ("I cannot answer this question. My knowledge base is restricted to the provided paediatric "
            "haematology/oncology (BSPHO) clinical trial protocols")
@@ -37,8 +40,12 @@ HOW TO WORK
    WBC ?>"), restricted to the protocol(s) the question is about. Use get_outline to find the right section.
    Then read_pages around the best hits (the hit page plus one before and after when the table may continue).
    Search again with other terms if the first pass finds nothing relevant. Never answer from snippets alone.
-4. Answer concisely in the clinician's language (English, Dutch or French). Quote thresholds, doses, criteria
-   and stopping rules verbatim or near-verbatim. Put a citation after every sentence that states a fact:
+   Be economical: a clinician on a shift is waiting. Usually 2–4 read_pages calls are enough; stop reading as
+   soon as the question is answered, and do not tour the whole protocol for completeness.
+4. Answer concisely in the clinician's language (English, Dutch or French): lead with the direct answer, then
+   the supporting criteria as short bullets, normally under 250 words; offer more detail at the end rather than
+   writing it. Quote thresholds, doses, criteria and stopping rules verbatim or near-verbatim. Put a citation
+   after every sentence that states a fact:
    [<protocol short title> v<version>, p. <page>, §<section>]  — the page is the PDF page number from
    read_pages; use the section title from the outline or the page heading, omit §... if unknown.
    Example: Platelets must be ≥50 × 10⁹/L without transfusion for 72 h [BEACON2 v1.0, p. 37, §Eligibility].
@@ -62,4 +69,8 @@ root_agent = Agent(
     description="Grounded search over BSPHO paediatric haemato-oncology protocols with page citations.",
     instruction=SYSTEM_PROMPT,
     tools=[list_protocols, get_outline, search_pages, read_pages],
+    generate_content_config=types.GenerateContentConfig(
+        temperature=0.1,
+        thinking_config=types.ThinkingConfig(thinking_level=THINKING) if THINKING else None,
+    ),
 )

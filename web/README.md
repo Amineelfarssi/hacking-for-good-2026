@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OncoProtocol Assist — web UI
 
-## Getting Started
+One-page Next.js 16 app for the UC1 protocol assistant: Sources (left), Chat (centre), Source viewer (right),
+plus an Admin tab. Built from rx-note-web's calm dashboard theme and `components/ui` primitives.
 
-First, run the development server:
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd web
+pnpm install
+pnpm dev            # http://localhost:3000
+pnpm typecheck && pnpm lint && pnpm build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Environment (all optional):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Default | Meaning |
+|---|---|---|
+| `MANIFEST_PATH` | `../data/uc1/manifest.jsonl` | Protocol list, one JSON object per line. Missing file → built-in mock (6 masters, 2 subs). |
+| `ADK_URL` | `http://localhost:8000` | ADK `api_server`. Unreachable → a generic mock answer is streamed. |
+| `ADK_APP_NAME` / `ADK_USER_ID` | `app` / `demo` | ADK app and user ids used for sessions. |
+| `FEEDBACK_BUCKET` | unset | Thumbs feedback goes to `gs://$FEEDBACK_BUCKET/feedback/<date>.jsonl`; unset → `web/.feedback.jsonl`. |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Start the agent with `uv run adk api_server app` from the repo root, then `pnpm dev` here.
 
-## Learn More
+## Routes
 
-To learn more about Next.js, take a look at the following resources:
+- `GET /api/protocols` → `{ hospitals: string[], protocols: Protocol[] }`. `Protocol = { id, short_title, full_title,
+  kind: "master"|"sub", version, hospitals: string[], gcs_uri, file?, pages? }`. Reads `MANIFEST_PATH` (plus
+  `web/.uploads/manifest.jsonl` when the manifest is not writable), else the mock.
+- `POST /api/chat` body `{ message, session_id?, hospital, protocol_ids: string[], include_subprotocols: boolean,
+  history? }` → SSE. Creates/reuses `POST {ADK_URL}/apps/{app}/users/{user}/sessions/{session_id}` with
+  `{ state: { hospital, protocol_ids, include_subprotocols } }`, then `POST {ADK_URL}/run_sse` with
+  `{ app_name, user_id, session_id, new_message: { role: "user", parts: [{ text }] }, streaming: true, state_delta }`.
+  The browser receives normalised events, one per `data:` line:
+  `{type:"session", session_id, mock}` · `{type:"status", text}` · `{type:"delta", text}` · `{type:"done"}` ·
+  `{type:"error", message}`.
+- `GET /api/pdf-url?id=` → `{ url, short_title, version }`. `url` is `/api/pdf?id=…` when the PDF is on disk
+  (manifest `file` relative to the manifest folder, or an admin upload), a V4 signed URL for a `gs://` `gcs_uri`
+  (ADC), else `/mock.pdf`.
+- `GET /api/pdf?id=` → the local PDF bytes.
+- `POST /api/feedback` `{ question, answer, vote: "up"|"down", session_id }` → `{ ok, stored: "gcs"|"local" }`.
+- `POST /api/admin/upload` multipart `{ file, short_title, kind, hospitals[] }` → `{ ok, id, stored_at, manifest,
+  protocol }`. Saves to `web/.uploads/<id>.pdf` and appends a manifest row. GCS upload + Discovery Engine import:
+  see the TODO in `app/api/admin/upload/route.ts` (lane D).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Citations
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The agent writes `[Short title vX, p. N, §Section]`. `lib/citations.ts` parses that, the chat renders chips, and a
+click resolves the label to a protocol by short title (version stripped) and opens the viewer at `#page=N`.
