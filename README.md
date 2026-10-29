@@ -54,19 +54,29 @@ served from the global Vertex AI endpoint in the lab project; `gemini-3.5-flash`
 `gemini-2.5-flash` also answer there. No vector index: retrieval is the agent's own list / outline / search / read
 loop over the extracted page text, so every citation is the PDF page the text came from.
 
-## Golden eval (29 Oct 2026, Gemini 4 Argon, hospital UZG, all protocols)
+## Golden eval (29 Oct 2026, Gemini 4 Argon, demo setting)
 
-| Q | Tier | Result | Time |
-|---|---|---|---|
-| Q1 dinutuximab start criteria | must | HR-NBL2 and BEACON2 answered per protocol, criteria cards, 28 citations | 54 s |
-| Q2 neuroblastoma staging, 3 y, MYCN not amplified | must | INRG staging, stage M rule, work-up list, 23 citations | 77 s |
-| Q3 FaR-RMS staging investigations | must | Histology + fusion status, imaging, lung nodule rule, 11–27 citations | 74 s |
-| Q4 150,000 WBC | must | Clarify card: ALL / AML / infant ALL before answering | 9 s |
-| Q5 adult hypertension | must | Refused, no medical content | 3 s |
-| Q6 child asthma | must | Refused, no medical content | 3 s |
-| Q7 ALLTogether1 stroke-like event | should | Master protocol sections, offers the sub-protocol deep dive | 51 s |
-| Q7b deep dive accepted | should | Thrombosis and glucarpidase guidelines, criteria card, 9 citations | 52 s |
-| Q9 Dutch patient text for FaR-RMS | could | Lay Dutch, phases and timepoints, 22 citations | 57 s |
+Scored by `scripts/score.py`: rule checks for the behaviours the brief demands plus a Gemini judge against the oncologist's reference answers. Full card: `eval/SCORECARD.md`.
+
+| Q | tier | verdict | rules | coverage | correctness | unsupported claims | time |
+|---|---|---|---|---|---|---|---|
+| Q1 | must | PASS | 37 citations | 4/5 | 4/5 | none | 114s |
+| Q2 | must | PARTIAL | 17 citations; no citation to HRNBL2 | 3/5 | 4/5 | 99mTc-MDP bone scan is mandatory if mIBG-negative; 4 aspirates are recommended if trephines are not done | 63s |
+| Q3 | must | PASS | 20 citations | 5/5 | 4/5 | none | 80s |
+| Q4 | must | PASS | asked a clarifying question first | -/5 | -/5 | none | 9s |
+| Q4b | must | PASS | 10 citations | 5/5 | 5/5 | none | 55s |
+| Q5 | must | PASS | refused; no medical content | 5/5 | 5/5 | none | 3s |
+| Q6 | must | PASS | refused; no medical content | 5/5 | 5/5 | none | 3s |
+| Q7 | should | PARTIAL | 11 citations; offers sub-protocols | 3/5 | 5/5 | none | 61s |
+| Q7b | should | PARTIAL | 13 citations | 3/5 | 3/5 | Therapeutic-dose LMWH for a minimum of 3 to 6 months and continued throughout asparaginase treatment; Withhold PEG-asparaginase for at least 4 weeks after a clinically significant VTE; Specific anticoagulation dosing and platelet thresholds (50 × 10⁹/L, 25–50 × 10⁹/L) | 217s |
+| Q9 | could | PASS | 22 citations; in Dutch | 4/5 | 5/5 | none | 57s |
+
+**Totals**
+
+- **must-have**: 6 / 7 PASS
+- **should-have**: 0 / 2 PASS
+- **could-have**: 1 / 1 PASS
+- **overall**: 7 / 10 PASS
 
 Reports with full answers and tool traces: `eval/results/`. Run: `PYTHONUNBUFFERED=1 uv run scripts/eval.py [Q1 Q4 …]`,
 one run at a time (the lab project's tokens-per-minute quota is small).
