@@ -18,6 +18,8 @@ type UiEvent =
   | { type: "session"; session_id: string; mock: boolean }
   | { type: "status"; text: string }
   | { type: "delta"; text: string }
+  | { type: "tool_call"; name: string; args: Record<string, unknown> }
+  | { type: "tool_result"; name: string; summary: Record<string, unknown> }
   | { type: "done" }
   | { type: "error"; message: string };
 
@@ -126,7 +128,11 @@ async function openAdkStream(
   }
 }
 
-type AdkPart = { text?: string; functionCall?: { name?: string }; functionResponse?: { name?: string } };
+type AdkPart = {
+  text?: string;
+  functionCall?: { name?: string; args?: Record<string, unknown> };
+  functionResponse?: { name?: string; response?: Record<string, unknown> };
+};
 type AdkEvent = { author?: string; partial?: boolean; content?: { role?: string; parts?: AdkPart[] }; errorMessage?: string };
 
 /** Turn ADK's event stream into UiEvents. Partial events carry deltas; a final event repeats the whole text. */
@@ -145,9 +151,11 @@ async function forwardAdkEvents(upstream: ReadableStream<Uint8Array>, send: (e: 
     for (const part of parts) {
       if (part.functionCall) {
         send({ type: "status", text: statusFor(part.functionCall.name) });
+        send({ type: "tool_call", name: part.functionCall.name ?? "tool", args: smallArgs(part.functionCall.args) });
         streamed = "";
       } else if (part.functionResponse) {
         send({ type: "status", text: "Reading results…" });
+        send({ type: "tool_result", name: part.functionResponse.name ?? "tool", summary: summarise(part.functionResponse.name, part.functionResponse.response) });
       } else if (typeof part.text === "string" && part.text && ev.content?.role !== "user") {
         if (ev.partial) {
           send({ type: "delta", text: part.text });
@@ -188,6 +196,43 @@ async function forwardAdkEvents(upstream: ReadableStream<Uint8Array>, send: (e: 
   }
 }
 
+/** Tool arguments for the trail: ids, pages and the query only, never page text. */
+function smallArgs(args?: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of ["protocol_id", "protocol_ids", "start_page", "end_page", "query", "hospital", "include_subprotocols"]) {
+    if (args && k in args) out[k] = k === "query" ? String(args[k]).slice(0, 200) : args[k];
+  }
+  return out;
+}
+
+type Section = { protocol_id?: unknown; protocol?: unknown; section?: unknown; pages?: unknown; matches?: unknown };
+
+/** A tool result reduced to what the trail draws: ids, titles, sections, page numbers. No text, no snippets. */
+function summarise(name: string | undefined, response?: Record<string, unknown>): Record<string, unknown> {
+  // Some ADK versions wrap the tool's return value in { result }.
+  const r = (response && typeof response.result === "object" && response.result !== null ? response.result : response ?? {}) as Record<string, unknown>;
+  switch (name) {
+    case "list_protocols":
+      return { hospital: r.hospital, n: Array.isArray(r.protocols) ? r.protocols.length : 0 };
+    case "get_outline":
+      return { protocol_id: r.protocol_id, protocol: r.protocol, n: Array.isArray(r.outline) ? r.outline.length : 0 };
+    case "search_pages": {
+      const sections = (Array.isArray(r.sections_with_hits) ? (r.sections_with_hits as Section[]) : []).slice(0, 8).map((sec) => ({
+        protocol_id: sec.protocol_id,
+        protocol: sec.protocol,
+        section: typeof sec.section === "string" ? sec.section.slice(0, 80) : sec.section,
+        pages: Array.isArray(sec.pages) ? sec.pages.slice(0, 12) : [],
+        matches: sec.matches,
+      }));
+      return { query: typeof r.query === "string" ? r.query.slice(0, 200) : undefined, pages_with_hits: r.pages_with_hits, sections };
+    }
+    case "read_pages":
+      return { protocol_id: r.protocol_id, protocol: r.protocol, from: r.from, to: r.to, total_pages: r.total_pages };
+    default:
+      return {};
+  }
+}
+
 /** What the user sees while a tool runs; the tool name itself is the fallback. */
 const TOOL_STATUS: Record<string, string> = {
   list_protocols: "Checking which protocols apply…",
@@ -209,8 +254,21 @@ The same chapter sets out when leukapheresis or exchange transfusion is consider
 If the diagnosis is ALL rather than AML, the relevant guidance lives in a different protocol: tell me which one applies and I will search it.`;
 
 async function streamMockAnswer(send: (e: UiEvent) => void, signal: AbortSignal) {
-  send({ type: "status", text: "Searching protocols… (mock)" });
-  await sleep(500, signal);
+  // Two mock tool rounds so the trail can be seen offline: one search, one read.
+  const sections = [
+    { protocol_id: "chip-aml22", protocol: "CHIP-AML22", section: "Hyperleukocytosis", pages: [91, 92], matches: 3 },
+    { protocol_id: "chip-aml22", protocol: "CHIP-AML22", section: "Supportive care", pages: [175, 176, 177], matches: 2 },
+  ];
+  send({ type: "status", text: statusFor("search_pages") });
+  send({ type: "tool_call", name: "search_pages", args: { query: "hyperleukocytosis management", protocol_ids: ["chip-aml22"] } });
+  await sleep(600, signal);
+  send({ type: "tool_result", name: "search_pages", summary: { query: "hyperleukocytosis management", pages_with_hits: 5, sections } });
+  send({ type: "status", text: statusFor("read_pages") });
+  send({ type: "tool_call", name: "read_pages", args: { protocol_id: "chip-aml22", start_page: 91, end_page: 92 } });
+  await sleep(700, signal);
+  send({ type: "tool_result", name: "read_pages", summary: { protocol_id: "chip-aml22", protocol: "CHIP-AML22", from: 91, to: 92, total_pages: 189 } });
+  send({ type: "status", text: "Writing the answer…" });
+  await sleep(400, signal);
   for (const word of MOCK_ANSWER.split(/(?<=\s)/)) {
     if (signal.aborted) return;
     send({ type: "delta", text: word });

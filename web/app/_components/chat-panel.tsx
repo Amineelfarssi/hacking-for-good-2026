@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { streamChat } from "@/lib/chat-stream";
 import type { Citation } from "@/lib/citations";
 import { AnswerBody } from "./answer-body";
+import { Trail } from "./trail";
 import type { ChatMessage } from "./types";
 
 const EXAMPLES = [
@@ -24,10 +25,11 @@ type Props = {
   protocolIds: string[];
   includeSubs: boolean;
   onOpenCitation: (c: Citation) => void;
+  onOpenPage: (protocolId: string, page: number) => void;
   onNewConversation: () => void;
 };
 
-export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpenCitation, onNewConversation }: Props) {
+export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpenCitation, onOpenPage, onNewConversation }: Props) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -61,7 +63,7 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
       setMessages((prev) => [
         ...prev,
         userMsg,
-        { id: assistantId, role: "assistant", content: "", streaming: true, status: "Searching protocols…" },
+        { id: assistantId, role: "assistant", content: "", streaming: true, status: "Searching protocols…", trail: [], startedAt: Date.now() },
       ]);
       setDraft("");
       setBusy(true);
@@ -81,6 +83,10 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
               case "delta":
                 patch(assistantId, (m) => ({ ...m, content: m.content + e.text, status: undefined }));
                 break;
+              case "tool_call":
+              case "tool_result":
+                patch(assistantId, (m) => ({ ...m, trail: [...(m.trail ?? []), { ...e, at: Date.now() }] }));
+                break;
               case "error":
                 patch(assistantId, (m) => ({ ...m, error: e.message, status: undefined }));
                 break;
@@ -95,7 +101,7 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
           patch(assistantId, (m) => ({ ...m, error: err instanceof Error ? err.message : "Request failed" }));
         }
       } finally {
-        patch(assistantId, (m) => ({ ...m, streaming: false, status: undefined }));
+        patch(assistantId, (m) => ({ ...m, streaming: false, status: undefined, finishedAt: Date.now() }));
         setBusy(false);
         abortRef.current = null;
         textareaRef.current?.focus();
@@ -184,6 +190,14 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
                         <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-primary/70 align-text-bottom" aria-hidden />
                       )}
                       {m.error && <p className="text-sm text-destructive">{m.error}</p>}
+                      {m.trail && m.trail.length > 0 && (
+                        <Trail
+                          events={m.trail}
+                          streaming={!!m.streaming}
+                          durationMs={m.startedAt ? (m.finishedAt ?? Date.now()) - m.startedAt : undefined}
+                          onOpenPage={onOpenPage}
+                        />
+                      )}
                     </div>
                     {!m.streaming && m.content && (
                       <div className="mt-1 flex items-center gap-0.5 pl-1">
