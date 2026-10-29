@@ -29,7 +29,7 @@ def slug(s: str) -> str:
 
 def version_of(name: str) -> str | None:
     # "v6.0", "Version 2.0c", "V1.5", "v3-0", "version-8.0"; never a date like 30112006 or 20220711
-    m = re.search(r"(?:[_ \-]v(?:ersion)?[ _.\-]?)(\d{1,2}(?:[.\-]\d{1,2}){0,2}(?:[a-z](?![a-z]))?)(?![\d])", name, re.I)
+    m = re.search(r"(?:[_ \-]v(?:ersion)?[ _.\-]?)(\d{1,2}(?:[.\-]\d{1,2})?(?:[a-z](?![a-z]))?)(?![\d])", name, re.I)
     return m.group(1).replace("_", ".").replace("-", ".") if m else None
 
 

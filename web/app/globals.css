@@ -3,9 +3,8 @@
 @tailwind utilities;
 
 /*
- * Tokens copied from rx-note-web/app/globals.css (29 Oct 2026): the shadcn base
- * set, the calm dashboard palette and the `[data-app-theme="calm"]` override.
- * The root layout always renders the marker, so the whole app is the calm theme.
+ * Theme tokens: the shadcn base set, the calm palette and the `[data-app-theme="calm"]`
+ * override. The root layout always renders the marker, so the whole app is the calm theme.
  */
 @layer base {
   :root {
@@ -30,7 +29,7 @@
     --ring: 0 91% 71%;
     --radius: 0.5rem;
 
-    /* Calm dashboard palette: warm paper instead of clinical white. */
+    /* Calm palette: warm paper. */
     --canvas: 36 24% 96%;    /* #F7F5F2 page ground   */
     --sunken: 38 26% 92%;    /* #EFEBE4 hover / chips */
     --line: 37 21% 88%;      /* #E7E2DA hairlines     */

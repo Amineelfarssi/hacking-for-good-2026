@@ -40,6 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# OncoProtocol Assist local state
+# OncoProtocol Assist local state (fallback when the backend is down)
 /.feedback.jsonl
-/.uploads/
