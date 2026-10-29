@@ -141,6 +141,8 @@ async function forwardAdkEvents(upstream: ReadableStream<Uint8Array>, send: (e: 
   const decoder = new TextDecoder();
   let buffer = "";
   let streamed = ""; // text already sent for the current model turn
+  // The final non-partial aggregate event repeats the turn's functionCall: the same call twice in a row is one.
+  let lastCall = "";
 
   const handle = (ev: AdkEvent) => {
     if (ev.errorMessage) {
@@ -150,10 +152,16 @@ async function forwardAdkEvents(upstream: ReadableStream<Uint8Array>, send: (e: 
     const parts = ev.content?.parts ?? [];
     for (const part of parts) {
       if (part.functionCall) {
-        send({ type: "status", text: statusFor(part.functionCall.name) });
-        send({ type: "tool_call", name: part.functionCall.name ?? "tool", args: smallArgs(part.functionCall.args) });
+        const call = { name: part.functionCall.name ?? "tool", args: smallArgs(part.functionCall.args) };
+        const signature = JSON.stringify(call);
+        if (signature !== lastCall) {
+          send({ type: "status", text: statusFor(call.name) });
+          send({ type: "tool_call", ...call });
+          lastCall = signature;
+        }
         streamed = "";
       } else if (part.functionResponse) {
+        lastCall = "";
         send({ type: "status", text: "Reading results…" });
         send({ type: "tool_result", name: part.functionResponse.name ?? "tool", summary: summarise(part.functionResponse.name, part.functionResponse.response) });
       } else if (typeof part.text === "string" && part.text && ev.content?.role !== "user") {
