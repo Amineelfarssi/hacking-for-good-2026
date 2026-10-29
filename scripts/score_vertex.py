@@ -1,21 +1,25 @@
 """Score the latest answer per golden question with Google's Vertex AI Gen AI Evaluation Service → eval/VERTEX_EVAL.md.
 
 A second, independent scorer next to scripts/score.py (rule checks + our own Gemini judge). This one hands the
-same answers to Google's evaluation service and reports its model-based metrics:
+same answers to Google's evaluation service (`vertexai.Client().evals.evaluate`) and reports:
 
-  * question_answering_quality   Google's prebuilt pointwise metric (1–5): instruction following, groundedness,
-                                 completeness, fluency of the answer to the question.
-  * groundedness                 Google's prebuilt pointwise metric (0/1): is every claim attributable to the
-                                 context? The context is the text of the protocol pages the answer cites.
+  * question_answering_quality   Google's prebuilt pointwise template (1–5): instruction following, groundedness,
+                                 completeness, fluency of the answer to the question. Judge: gemini-3.8-flash.
+  * grounding                    Google's predefined metric (0–1): the share of the answer's sentences supported by
+                                 the context, here the text of the protocol pages the answer cites. The service's
+                                 own judge; n/a for refusals and clarifying questions, which cite nothing.
   * protocol_citation_completeness
                                  Our pointwise rubric (0–5): are all key criteria, thresholds and steps of the
-                                 oncologist's reference answer present, each with a page citation?
+                                 oncologist's reference answer present, each with a page citation? Judge: gemini-3.8-flash.
 
-Dataset rows: prompt = the question, response = the latest answer, reference = the golden-spreadsheet answer
-(for Q5/Q6 the refusal reference), context = cited pages (capped at ~20k characters).
+Dataset rows: prompt = the question (both turns for Q4b), response = the latest answer, reference = the golden-
+spreadsheet answer (for Q5/Q6 the refusal reference), context = cited pages (capped at ~20k characters).
+Template metrics need an explicit "return a JSON object with score and explanation" line, or the service cannot
+parse the judge; the judge override must be a full publisher-model resource name on the global endpoint.
 
 Run:  uv run scripts/score_vertex.py [Q1 Q4 …] [--dry-run] [--location europe-west1]
       --dry-run prints the dataset rows and calls nothing. Never calls the agent; run scripts/eval.py first.
+      Falls back to us-central1 if the service refuses the location. Raw service output: eval/results/vertex-<ts>.json.
 """
 
 from __future__ import annotations
@@ -183,7 +187,7 @@ def build_dataset(only: list[str] | None) -> list[dict]:
             continue
         context, info = build_context(a["answer"], manifest)
         if not context:
-            context = "(The answer cites no protocol page. A refusal or a clarifying question needs no context.)"
+            context = "(no protocol pages cited)"  # grounding is reported n/a for these rows
         q = questions[qid]
         prompt = "\n".join(q["turns"]) if q.get("turns") else q["q"]  # two-turn questions: both user turns
         rows.append({"qid": qid, "tier": a["tier"], "file": a["file"], "prompt": prompt, "response": a["answer"],
@@ -245,32 +249,72 @@ STEP 3: Score with the Rating Rubric. Explain which elements are missing, wrong 
 {response}
 """
 
-CONTEXT_BLOCK = "### Prompt\n\n{prompt}\n\n### Context (the protocol pages the response cites)\n\n{context}"
+# The service parses the judge's reply as a JSON object; without this instruction it answers in prose and every
+# template metric errors ("Error parsing JSON"). Appended to Google's prebuilt template and to our rubric alike.
+OUTPUT_FORMAT = ('\n\n# Output Format\nReturn only a JSON object with two keys: "score" (a number from the Rating Rubric) '
+                 'and "explanation" (a short string with your step-by-step reasoning). No markdown fences, nothing else.\n')
 
 
-def build_metrics(client):
-    """Google's prebuilt metrics (resolved from the SDK's public bucket) plus our own rubric. All with the same judge."""
+def judge_candidates(location: str) -> list[str | None]:
+    """The service wants a full publisher-model resource name; the lab's Gemini models sit on the global endpoint."""
+    return [f"projects/{PROJECT}/locations/{loc}/publishers/google/models/{JUDGE_MODEL}" for loc in ("global", location)] + [None]
+
+
+def pick_judge(client, location: str) -> str | None:
+    """One-row probe per candidate name until the service accepts one; None = the service's default judge."""
+    import pandas as pd
     from vertexai import types
 
-    qa = types.PrebuiltMetric.QUESTION_ANSWERING_QUALITY(judge_model=JUDGE_MODEL)
-    # Google's groundedness template judges the response against "the user prompt". Our prompt is only the question,
-    # so the cited pages go into a Context block right under the prompt; the rubric and scale stay Google's.
-    grounded = types.PrebuiltMetric.GROUNDEDNESS.resolve(client._api_client)
-    anchor = "### Prompt\n\n{prompt}"
-    if anchor not in grounded.prompt_template:
-        raise SystemExit("Google's groundedness template changed shape; its '### Prompt' block was not found.")
-    groundedness = types.LLMMetric(name="groundedness", judge_model=JUDGE_MODEL,
-                                   prompt_template=grounded.prompt_template.replace(anchor, CONTEXT_BLOCK))
-    citation = types.LLMMetric(name="protocol_citation_completeness", prompt_template=CITATION_RUBRIC,
-                               judge_model=JUDGE_MODEL)
-    versions = {"question_answering_quality": "prebuilt (SDK bucket, latest)",
-                "groundedness": f"prebuilt {getattr(grounded, '_version', None) or 'v?'} + context block",
-                "protocol_citation_completeness": "custom rubric in scripts/score_vertex.py"}
-    return [qa, groundedness, citation], versions
+    probe = pd.DataFrame([{"prompt": "What is 2 + 2?", "response": "4"}])
+    for judge in judge_candidates(location):
+        if judge is None:
+            print(f"judge: {JUDGE_MODEL} not accepted by the service; using its default judge", flush=True)
+            return None
+        metric = types.LLMMetric(name="probe", prompt_template="# Evaluation\n## Rating Rubric\n5: correct.\n1: wrong.\n\n"
+                                 "# User Inputs and AI-generated Response\n## User Inputs\n### Prompt\n{prompt}\n\n"
+                                 "## AI-generated Response\n{response}" + OUTPUT_FORMAT, judge_model=judge)
+        res = client.evals.evaluate(dataset=probe, metrics=[metric], config={"dataset_schema": "FLATTEN"})
+        mr = res.eval_case_results[0].response_candidate_results[0].metric_results["probe"]
+        if mr.error_message is None and mr.score is not None:
+            print(f"judge: {judge}", flush=True)
+            return judge
+        print(f"judge {judge} refused: {one_line(mr.error_message, 120)}", flush=True)
+    return None
 
 
-METRICS = ("question_answering_quality", "groundedness", "protocol_citation_completeness")
-SCALES = {"question_answering_quality": "1–5", "groundedness": "0/1", "protocol_citation_completeness": "0–5"}
+def build_metrics(client, judge: str | None) -> tuple[list, list[str], dict]:
+    """Google's prebuilt QA-quality template, Google's predefined grounding metric, and our own rubric.
+
+    Returns the metric objects, their resolved names (the keys the service uses in its results) and a note per name.
+    """
+    from vertexai import types
+
+    api = client._api_client
+    judge_kw = {"judge_model": judge} if judge else {}
+    judge_label = JUDGE_MODEL if judge else "service default"
+    qa = types.PrebuiltMetric.QUESTION_ANSWERING_QUALITY(**judge_kw).resolve(api)  # Google's template, from the SDK bucket
+    qa = types.LLMMetric(name=qa.name, prompt_template=qa.prompt_template.rstrip() + OUTPUT_FORMAT, **judge_kw)
+    # `grounding` is the service's own predefined metric: response scored sentence by sentence against `context`.
+    # Predefined metrics run on the service's own judge; a judge_model override is ignored for them.
+    grounding = types.RubricMetric.GROUNDING(version=GROUNDING_VERSION).resolve(api) if GROUNDING_VERSION \
+        else types.RubricMetric.GROUNDING.resolve(api)
+    citation = types.LLMMetric(name="protocol_citation_completeness", prompt_template=CITATION_RUBRIC.rstrip() + OUTPUT_FORMAT,
+                               **judge_kw)
+    metrics = [qa, grounding, citation]
+    names = [m.name for m in metrics]
+    notes = {qa.name: f"Google prebuilt template v1 (SDK bucket) + JSON output line, judge {judge_label}",
+             grounding.name: "Google predefined metric, service judge (override not accepted), response vs context; "
+                             "n/a for answers that cite no page",
+             citation.name: f"custom rubric in scripts/score_vertex.py, judge {judge_label}"}
+    return metrics, names, notes
+
+
+GROUNDING_VERSION = os.environ.get("VERTEX_GROUNDING_VERSION")  # e.g. "v1" if the latest version is not served in the region
+SCALES = {"question_answering_quality": "1–5", "grounding": "0–1", "protocol_citation_completeness": "0–5"}
+
+
+def scale(name: str) -> str:
+    return next((v for k, v in SCALES.items() if name.startswith(k)), "")
 
 
 def location_unavailable(err: Exception) -> bool:
@@ -284,26 +328,24 @@ def run_evaluation(rows: list[dict], location: str):
     import vertexai
 
     client = vertexai.Client(project=PROJECT, location=location)
-    metrics, versions = build_metrics(client)
+    metrics, names, notes = build_metrics(client, pick_judge(client, location))
     df = pd.DataFrame([{k: r[k] for k in ("prompt", "response", "reference", "context")} for r in rows])
     t0 = time.time()
     result = client.evals.evaluate(dataset=df, metrics=metrics, config={"dataset_schema": "FLATTEN"})
-    return result, versions, time.time() - t0
+    return result, names, notes, time.time() - t0
 
 
 def evaluate_with_fallback(rows: list[dict], location: str | None):
     """Try the requested location; if the service is not there, say so and use us-central1."""
     first = location or PRIMARY_LOCATION
     try:
-        result, versions, secs = run_evaluation(rows, first)
-        return result, versions, secs, first, None
+        return (*run_evaluation(rows, first), first, None)
     except Exception as e:  # noqa: BLE001
         if location or first == FALLBACK_LOCATION or not location_unavailable(e):
             raise
         note = f"{first} refused the evaluation call ({type(e).__name__}: {str(e)[:160]}); fell back to {FALLBACK_LOCATION}"
         print(note, flush=True)
-        result, versions, secs = run_evaluation(rows, FALLBACK_LOCATION)
-        return result, versions, secs, FALLBACK_LOCATION, note
+        return (*run_evaluation(rows, FALLBACK_LOCATION), FALLBACK_LOCATION, note)
 
 
 # ---------------------------------------------------------------- report
@@ -317,7 +359,7 @@ def fmt(x) -> str:
     return "-" if x is None else (f"{x:.2f}".rstrip("0").rstrip(".") if isinstance(x, float) else str(x))
 
 
-def collect(result, rows: list[dict]) -> list[dict]:
+def collect(result, rows: list[dict], names: list[str]) -> list[dict]:
     """One dict per question: scores and explanations keyed by metric name."""
     per_case = {c.eval_case_index: c for c in (result.eval_case_results or [])}
     out = []
@@ -325,47 +367,51 @@ def collect(result, rows: list[dict]) -> list[dict]:
         case = per_case.get(i)
         mr = (case.response_candidate_results[0].metric_results if case and case.response_candidate_results else {}) or {}
         scores, notes = {}, {}
-        for m in METRICS:
+        for m in names:
             res = mr.get(m)
+            if m.startswith("grounding") and not r["cited_pages"]:
+                scores[m], notes[m] = None, "n/a: the answer cites no page, so there is no context to ground it in"
+                continue
             scores[m] = res.score if res else None
             notes[m] = (res.explanation or res.error_message) if res else "no result"
         out.append({**r, "scores": scores, "notes": notes})
     return out
 
 
-def write_report(scored: list[dict], result, versions: dict, location: str, note: str | None, secs: float) -> str:
+def write_report(scored: list[dict], result, names: list[str], metric_notes: dict, location: str, note: str | None,
+                 secs: float) -> str:
+    import vertexai
+
     meta = result.metadata
     run_id = getattr(meta, "dataset_id", None) if meta else None
     created = getattr(meta, "creation_timestamp", None) if meta else None
-    import vertexai
-
-    lines = [f"# Vertex AI evaluation · {time.strftime('%Y-%m-%d %H:%M')} · judge {JUDGE_MODEL} · {location}", "",
+    lines = [f"# Vertex AI evaluation · {time.strftime('%Y-%m-%d %H:%M')} · {location}", "",
              "Google's Gen AI Evaluation Service scoring the same answers as `eval/SCORECARD.md` (our rules + judge). "
-             "`question_answering_quality` and `groundedness` are Google's prebuilt pointwise metrics; "
-             "`protocol_citation_completeness` is our rubric (0–5: every key criterion, threshold and step of the "
-             "oncologist's reference present, each with a page citation). Groundedness judges the answer against the "
-             "text of the pages it cites (context, ≤20k characters).", "",
+             "`question_answering_quality` is Google's prebuilt pointwise template (1–5), `grounding` Google's predefined "
+             "metric (0–1: the share of the answer's sentences supported by the context, here the text of the pages the "
+             "answer cites, ≤20k characters) and `protocol_citation_completeness` our rubric (0–5: every key criterion, "
+             "threshold and step of the oncologist's reference present, each with a page citation).", "",
              f"- Project `{PROJECT}`, location `{location}`" + (f" — {note}" if note else ""),
              f"- SDK `google-cloud-aiplatform` {vertexai.__version__}, `vertexai.Client().evals.evaluate`, "
              f"{len(scored)} rows in {secs:.0f}s",
              f"- Run id: `{run_id or 'none returned'}`" + (f", created {created:%Y-%m-%d %H:%M:%S}" if created else ""),
-             "- Metrics: " + "; ".join(f"`{m}` ({SCALES[m]}, {versions[m]})" for m in METRICS), ""]
-    lines += ["## Summary", "", "| Q | tier | " + " | ".join(METRICS) + " | answer from |",
-              "|---|---|" + "---|" * len(METRICS) + "---|"]
+             "- Metrics: " + "; ".join(f"`{m}` ({scale(m)}, {metric_notes[m]})" for m in names), ""]
+    lines += ["## Summary", "", "| Q | tier | " + " | ".join(names) + " | answer from |",
+              "|---|---|" + "---|" * len(names) + "---|"]
     for s in scored:
-        lines.append(f"| {s['qid']} | {s['tier']} | " + " | ".join(fmt(s['scores'][m]) for m in METRICS) + f" | {s['file']} |")
-    lines += ["", "## Means per tier", "", "| tier | n | " + " | ".join(METRICS) + " |", "|---|---|" + "---|" * len(METRICS)]
+        lines.append(f"| {s['qid']} | {s['tier']} | " + " | ".join(fmt(s['scores'][m]) for m in names) + f" | {s['file']} |")
+    lines += ["", "## Means per tier", "", "| tier | n | " + " | ".join(names) + " |", "|---|---|" + "---|" * len(names)]
     for tier in TIERS + ("all",):
         group = [s for s in scored if tier == "all" or s["tier"] == tier]
         if not group:
             continue
         cells = []
-        for m in METRICS:
+        for m in names:
             vals = [s["scores"][m] for s in group if s["scores"][m] is not None]
             cells.append(fmt(sum(vals) / len(vals)) if vals else "-")
         lines.append(f"| {tier} | {len(group)} | " + " | ".join(cells) + " |")
     if result.summary_metrics:
-        lines += ["", "Service summary: " + "; ".join(
+        lines += ["", "Service summary (grounding there counts no-citation rows as 0): " + "; ".join(
             f"`{m.metric_name}` mean {fmt(m.mean_score)} (valid {m.num_cases_valid}/{m.num_cases_total}"
             + (f", errors {m.num_cases_error}" if m.num_cases_error else "") + ")" for m in result.summary_metrics)]
     lines += ["", "## Per question", ""]
@@ -374,7 +420,7 @@ def write_report(scored: list[dict], result, versions: dict, location: str, note
                   f"({s['context_chars']} chars)", "",
                   f"**Q:** {one_line(s['prompt'], 300)}", "",
                   "| metric | score | judge's explanation |", "|---|---|---|"]
-        for m in METRICS:
+        for m in names:
             lines.append(f"| {m} | {fmt(s['scores'][m])} | {one_line(s['notes'][m])} |")
         extras = []
         if s["unmatched_titles"]:
@@ -415,15 +461,17 @@ def main() -> None:
                   f"{r['context'][:400]}{' …' if len(r['context']) > 400 else ''}")
         print(f"\ndry run: {len(rows)} rows, no call made", flush=True)
         return
-    print(f"evaluating {len(rows)} rows with {', '.join(METRICS)} · judge {JUDGE_MODEL} · {args.location or PRIMARY_LOCATION}", flush=True)
-    result, versions, secs, location, note = evaluate_with_fallback(rows, args.location)
-    scored = collect(result, rows)
+    print(f"evaluating {len(rows)} rows · question_answering_quality, grounding, protocol_citation_completeness · "
+          f"judge {JUDGE_MODEL} · {args.location or PRIMARY_LOCATION}", flush=True)
+    result, names, metric_notes, secs, location, note = evaluate_with_fallback(rows, args.location)
+    scored = collect(result, rows, names)
     for s in scored:
-        print(f"{s['qid']:4} " + "  ".join(f"{m.split('_')[0]}={fmt(s['scores'][m])}" for m in METRICS), flush=True)
-    write_report(scored, result, versions, location, note, secs)
+        print(f"{s['qid']:4} " + "  ".join(f"{m}={fmt(s['scores'][m])}" for m in names), flush=True)
+    write_report(scored, result, names, metric_notes, location, note, secs)
     RESULTS.mkdir(exist_ok=True)
     raw = RESULTS / f"vertex-{time.strftime('%Y%m%d-%H%M%S')}.json"
-    raw.write_text(json.dumps({"location": location, "judge": JUDGE_MODEL, "questions": [s["qid"] for s in scored],
+    raw.write_text(json.dumps({"location": location, "judge": JUDGE_MODEL, "metrics": names,
+                               "questions": [s["qid"] for s in scored],
                                "result": json.loads(result.model_dump_json(exclude={"evaluation_dataset"}, exclude_none=True))},
                               indent=1, ensure_ascii=False))
     print(f"wrote eval/VERTEX_EVAL.md and {raw.relative_to(ROOT)} · {location} · {secs:.0f}s", flush=True)
