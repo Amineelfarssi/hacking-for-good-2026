@@ -58,11 +58,11 @@ async def main(only: set[str]) -> None:
                 if "429" not in str(e) or attempt == 2:
                     answer, tools = f"ERROR: {type(e).__name__}: {str(e)[:300]}", []
                     break
-                print(f"{row['id']}: rate limited, waiting 45 s (attempt {attempt + 1})")
+                print(f"{row['id']}: rate limited, waiting 45 s (attempt {attempt + 1})", flush=True)
                 await asyncio.sleep(45)
         dt = time.time() - t0
         cites = len(CITE.findall(answer))
-        print(f"{row['id']:4} {dt:5.1f}s  {cites:2} cites  {len(tools):2} tool calls  {row['q'][:60]}")
+        print(f"{row['id']:4} {dt:5.1f}s  {cites:2} cites  {len(tools):2} tool calls  {row['q'][:60]}", flush=True)
         lines += [f"## {row['id']} ({row['tier']}) · {dt:.1f}s · {cites} citations · {len(tools)} tool calls",
                   f"**Q:** {row['q']}", "", f"**Expect:** {row['expect']}", "", "**Tools:** " + "; ".join(tools), "",
                   answer, "", "---", ""]
