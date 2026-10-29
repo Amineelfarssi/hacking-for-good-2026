@@ -34,12 +34,13 @@ Clinician ─ web/ (Next.js: Sources panel · Chat · Source viewer · Admin)
 4. `uv run scripts/build_manifest.py` then `uv run scripts/ingest.py` — upload + metadata import (indexing takes minutes).
 5. `uv run uvicorn app.server:api --port 8000` (agent API + protocols, PDF, admin, feedback) and, in `web/`, `pnpm install && pnpm dev` (port 3000).
 6. `uv run scripts/eval.py` — runs the 9 golden questions and writes `eval/results/<timestamp>.md`.
+7. `uv run scripts/score.py` — rules + our Gemini judge → `eval/SCORECARD.md`; `uv run scripts/score_vertex.py [--dry-run]` — Google's Vertex AI Gen AI Evaluation Service (question_answering_quality, grounding, protocol_citation_completeness) → `eval/VERTEX_EVAL.md`.
 
 ## Layout
 
 ```
 app/        ADK agent (root_agent) + tools
-scripts/    setup-gcp.sh, build_manifest.py, ingest.py, eval.py
+scripts/    setup-gcp.sh, build_manifest.py, ingest.py, eval.py, score.py, score_vertex.py
 web/        Next.js UI (Sources · Chat · Viewer · Admin)
 data/uc1/   corpus, manifest (git-ignored)
 eval/       golden questions
