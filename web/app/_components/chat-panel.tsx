@@ -156,20 +156,20 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {messages.length === 0 ? (
           <EmptyState onPick={(q) => void send(q)} />
         ) : (
-          <ol className="space-y-3">
+          <ol className="mx-auto max-w-[760px] space-y-4">
             {messages.map((m) => (
               <li key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
                 {m.role === "user" ? (
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-sunken px-3 py-2 text-sm leading-6 text-ink">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary/[0.07] px-4 py-2 text-[15px] leading-6 text-ink">
                     {m.content}
                   </div>
                 ) : (
                   <div className="w-full animate-fade-up">
-                    <div className="rounded-2xl rounded-bl-md bg-white px-4 py-3">
+                    <div className="px-1 py-1">
                       {m.content && (
                         <AnswerBody
                           text={m.content}
@@ -200,7 +200,7 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
                       )}
                     </div>
                     {!m.streaming && m.content && (
-                      <div className="mt-0.5 flex items-center gap-0.5 pl-1">
+                      <div className="mt-1 flex items-center gap-0.5">
                         <VoteButton label="Helpful" active={m.vote === "up"} onClick={() => void vote(m, "up")} icon={<ThumbsUp />} />
                         <VoteButton label="Not helpful" active={m.vote === "down"} onClick={() => void vote(m, "down")} icon={<ThumbsDown />} />
                       </div>
@@ -215,13 +215,13 @@ export function ChatPanel({ sessionId, hospital, protocolIds, includeSubs, onOpe
       </div>
 
       <form
-        className="shrink-0 p-3 pt-1"
+        className="shrink-0 px-5 pb-4 pt-1"
         onSubmit={(e) => {
           e.preventDefault();
           void send(draft);
         }}
       >
-        <div className="flex items-end gap-2 rounded-xl border border-line bg-white p-1.5 focus-within:border-primary/50">
+        <div className="mx-auto flex max-w-[760px] items-end gap-2 rounded-xl border border-line bg-canvas p-1.5 focus-within:border-primary/60 focus-within:bg-white">
           <Textarea
             ref={textareaRef}
             value={draft}
@@ -269,7 +269,7 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
   return (
     <div className="mx-auto flex h-full max-w-md flex-col justify-center gap-4 py-6">
       <div>
-        <h3 className="text-base font-medium text-ink">Ask a protocol question</h3>
+        <h3 className="font-heading text-xl font-semibold text-ink">Ask a protocol question</h3>
         <p className="mt-1 text-sm text-ink-soft">
           Answers come only from the protocols ticked on the left, with the document and page for every fact. When something is not covered, the assistant says so.
         </p>
@@ -280,7 +280,7 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
             <button
               type="button"
               onClick={() => onPick(q)}
-              className="w-full rounded-xl bg-white px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-primary/5"
+              className="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-left text-sm text-ink transition-colors hover:border-primary/50 hover:bg-primary/[0.04]"
             >
               {q}
             </button>

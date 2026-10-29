@@ -1,7 +1,7 @@
 # OncoProtocol Assist — web UI
 
 One-page Next.js 16 app for the UC1 protocol assistant: Sources (left), Chat (centre), Source viewer (right),
-plus an Admin tab. Calm theme, shadcn/ui primitives in `components/ui`.
+plus an Admin tab. Own theme tokens in `app/globals.css`, shadcn/ui primitives in `components/ui`.
 
 ## Run
 

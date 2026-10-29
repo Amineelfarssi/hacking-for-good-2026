@@ -132,7 +132,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-4">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
         <h1 className="page-title whitespace-nowrap">OncoProtocol Assist</h1>
         <p className="page-subtitle hidden min-w-0 truncate md:block">
           Grounded search over BSPHO paediatric haemato-oncology protocols. Cites document and page; never guesses.
@@ -151,7 +151,7 @@ export function AppShell() {
         <TabsContent value="assistant" className="mt-0 min-h-0 flex-1 data-[state=inactive]:hidden">
           <div
             className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[var(--cols)]"
-            style={{ "--cols": `${sourcesOpen ? "272px" : "48px"} minmax(0,1fr) ${viewerOpen ? "minmax(0,1fr)" : "48px"}` } as React.CSSProperties}
+            style={{ "--cols": `${sourcesOpen ? "264px" : "48px"} minmax(0,1.5fr) ${viewerOpen ? "minmax(0,1fr)" : "48px"}` } as React.CSSProperties}
           >
             <aside className="min-h-0 border-b border-line lg:border-b-0 lg:border-r">
               <SourcesPanel
@@ -171,7 +171,7 @@ export function AppShell() {
                 loading={!data}
               />
             </aside>
-            <section className="min-h-0 min-w-0 border-b border-line bg-white/40 lg:border-b-0 lg:border-r">
+            <section className="min-h-0 min-w-0 border-b border-line bg-white lg:border-b-0 lg:border-r">
               <ChatPanel
                 key={sessionBase}
                 sessionId={sessionId}

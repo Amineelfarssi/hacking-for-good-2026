@@ -112,7 +112,10 @@ function ViewerBody({ target, onToggle }: { target: ViewerTarget; onToggle: () =
           {title}
         </span>
         {match !== null && (
-          <Badge variant="secondary" className="hidden whitespace-nowrap px-1.5 py-0 text-xs font-normal text-ink-soft xl:inline-flex">
+          <Badge
+            variant="secondary"
+            className={cn("hidden whitespace-nowrap px-1.5 py-0 text-xs font-normal xl:inline-flex", match === "none" ? "text-ink-soft" : "border-cite-line bg-cite-bg text-cite-ink")}
+          >
             {MATCH_LABEL[match]}
           </Badge>
         )}

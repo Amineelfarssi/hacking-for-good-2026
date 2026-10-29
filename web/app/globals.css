@@ -3,77 +3,64 @@
 @tailwind utilities;
 
 /*
- * Theme tokens: the shadcn base set, the calm palette and the `[data-app-theme="calm"]`
- * override. The root layout always renders the marker, so the whole app is the calm theme.
+ * Theme tokens live in the :root block below; the primitives read the shadcn names, the app reads
+ * canvas / sunken / line / ink and the cite accent.
  */
 @layer base {
+  /*
+   * Theme tokens. Cool clinical neutrals, one teal primary for actions and selection, one amber accent
+   * reserved for citations and highlighted passages, so a source reference is recognisable anywhere.
+   * All text pairs pass WCAG AA on their grounds (ink-faint #5B6678 on white is 5.4:1).
+   */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 0 91% 71%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 0 91% 71%;
-    --radius: 0.5rem;
+    --canvas: 210 25% 97%;     /* #F4F6F9 page ground */
+    --sunken: 212 22% 93%;     /* #E8ECF1 hover, chips, wells */
+    --line: 213 20% 87%;       /* #D7DDE5 hairlines */
+    --divider: 213 20% 90%;
+    --hairline: 213 22% 94%;   /* #ECF0F4 rows inside a card */
+    --selected: 196 60% 94%;   /* #E4F2F6 selected row */
+    --ink: 222 40% 12%;        /* #12192B text, primary */
+    --ink-soft: 218 20% 30%;   /* #3D475C secondary */
+    --ink-faint: 218 14% 41%;  /* #5B6678 tertiary */
 
-    /* Calm palette: warm paper. */
-    --canvas: 36 24% 96%;    /* #F7F5F2 page ground   */
-    --sunken: 38 26% 92%;    /* #EFEBE4 hover / chips */
-    --line: 37 21% 88%;      /* #E7E2DA hairlines     */
-    --divider: 33 19% 91%;   /* #ECE8E3 pane + card edges */
-    --hairline: 33 26% 93%;  /* #F2EEE9 rows inside a card */
-    --selected: 206 47% 94%; /* #EAF2F8 selected row */
-    --ink: 40 10% 18%;       /* #33302A text, primary */
-    --ink-soft: 38 8% 39%;   /* #6B655B secondary     */
-    --ink-faint: 37 8% 58%;  /* #9C958A tertiary      */
-    --primary-ink: 0 70% 17%; /* #4A0D0D text on the rose primary */
-  }
-
-  /* The calm theme. `:has()` lifts the tokens to <html> so Radix portals
-     (select menus, tooltips, toasts) mounted on <body> get them too. */
-  html:has([data-app-theme="calm"]) {
     --background: var(--canvas);
     --foreground: var(--ink);
     --card: 0 0% 100%;
     --card-foreground: var(--ink);
     --popover: 0 0% 100%;
     --popover-foreground: var(--ink);
-    --primary: 0 91% 71%;
+    --primary: 196 72% 30%;        /* #156D84 teal: actions, selection, links */
     --primary-foreground: 0 0% 100%;
+    --primary-ink: 196 80% 18%;
     --secondary: var(--sunken);
     --secondary-foreground: var(--ink);
     --muted: var(--sunken);
     --muted-foreground: var(--ink-soft);
     --accent: var(--sunken);
     --accent-foreground: var(--ink);
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
     --border: var(--line);
     --input: var(--line);
-    --ring: 0 91% 71%;
+    --ring: var(--primary);
     --radius: 0.625rem;
-    /* Type scale: 13 / 14 / 16 only (text-xs / text-sm / text-base). */
+
+    --cite: 38 92% 50%;        /* #F59E0B amber accent */
+    --cite-ink: 26 90% 26%;    /* #7C3A07 text on the amber well, 7.9:1 */
+    --cite-bg: 46 100% 95%;    /* #FFF8E5 */
+    --cite-line: 44 94% 80%;   /* #FBE6A2 */
+
+    /* Type scale: 13 / 14 / 16; answers read at 15. */
     --fs-sm: 0.875rem;
     --fs-xs: 0.8125rem;
   }
 
-  html:has([data-app-theme="calm"]) body {
+  body {
     font-size: 14px;
   }
 
-  html:has([data-app-theme="calm"]) :is(h1, h2, h3) {
-    letter-spacing: -0.015em;
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
   }
 
   * {
@@ -84,20 +71,20 @@
   }
   *:focus-visible {
     outline: none !important;
-    box-shadow: 0 0 0 1px hsl(var(--ring) / 0.35) !important;
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.35) !important;
   }
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    border-color: hsl(var(--ring) / 0.5) !important;
+    border-color: hsl(var(--ring) / 0.6) !important;
     box-shadow: none !important;
   }
 }
 
 @layer components {
   .page-title {
-    @apply text-base font-semibold leading-6 text-ink;
-    letter-spacing: -0.015em;
+    @apply font-heading text-[17px] font-semibold leading-6 text-ink;
+    letter-spacing: -0.005em;
   }
   .page-subtitle {
     @apply text-xs font-normal leading-5 text-ink-soft;
@@ -109,9 +96,10 @@
     @apply mb-2 text-sm font-medium leading-6 text-ink;
   }
 
-  /* A streamed answer: markdown rendered in the calm palette. */
+  /* A streamed answer: markdown in the theme palette. */
+  /* A streamed answer: the hero text, one notch larger than the UI. */
   .answer-md {
-    @apply text-sm leading-6 text-ink;
+    @apply text-[15px] leading-[1.65] text-ink;
   }
   .answer-md p { @apply my-2; }
   .answer-md p:first-child { @apply mt-0; }
@@ -119,12 +107,13 @@
   .answer-md ul { @apply my-2 list-disc pl-5; }
   .answer-md ol { @apply my-2 list-decimal pl-5; }
   .answer-md li { @apply my-0.5; }
-  .answer-md h1, .answer-md h2, .answer-md h3 { @apply mb-1 mt-3 text-sm font-semibold; }
+  .answer-md h1, .answer-md h2, .answer-md h3 { @apply mb-1 mt-4 font-heading text-base font-semibold; }
   .answer-md strong { @apply font-semibold; }
   .answer-md code { @apply rounded-md bg-sunken px-1 py-0.5 text-xs; }
   .answer-md table { @apply my-2 w-full border-collapse text-xs; }
   .answer-md th, .answer-md td { @apply border border-line px-2 py-1 text-left align-top; }
   .answer-md th { @apply bg-sunken font-medium; }
+  .answer-md a { @apply text-primary underline underline-offset-2; }
   .answer-md blockquote { @apply my-2 border-l-2 border-line pl-3 text-ink-soft; }
   .answer-md .katex, .answer-md-inline .katex { font-size: 1em; }
   .answer-md-inline a { @apply text-primary underline underline-offset-2; }
@@ -133,4 +122,15 @@
 /* A collapsed side panel: a 48px rail with the toggle on top. */
 .rail {
   @apply flex h-full w-12 flex-col items-center gap-2 py-2;
+}
+
+/* Clinical reference card: white, hairline, a small uppercase kind label above a serif title. */
+.ref-card {
+  @apply rounded-xl border border-line bg-white shadow-[0_1px_2px_hsl(222_40%_12%/0.04)];
+}
+.ref-kind {
+  @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-primary;
+}
+.ref-title {
+  @apply font-heading text-[15px] font-semibold leading-5 text-ink;
 }
