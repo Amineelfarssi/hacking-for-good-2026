@@ -95,6 +95,9 @@ is queried through the Vertex AI SDK (`client.agent_engines.get(name).stream_que
 console, not through `/run_sse`. Check in the runtime's logs that `GOOGLE_CLOUD_LOCATION` is `global` at run
 time: the generated Dockerfile also sets it to the runtime's region, and the `env_vars` block is meant to win.
 
+Deployed 29 Oct 2026 14:27: `projects/7335133887/locations/europe-west1/reasoningEngines/4051481545540632576`
+(display name `oncoprotocol-assist`, runtime identity the api service account, corpus from the bucket).
+
 ## 6. Smoke test
 
 ```bash
