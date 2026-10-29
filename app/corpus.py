@@ -126,7 +126,7 @@ def get(protocol_id: str) -> Protocol | None:
 
 def at_hospital(hospital: str, include_sub: bool = False) -> list[Protocol]:
     return [p for p in load().values()
-            if (p.kind == "master" and hospital in p.hospitals) or (include_sub and p.kind == "sub")]
+            if (p.kind in ("master", "local") and hospital in p.hospitals) or (include_sub and p.kind == "sub")]
 
 
 def outline_of(p: Protocol, limit: int = 150) -> list[dict]:

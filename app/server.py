@@ -58,7 +58,7 @@ async def admin_upload(file: UploadFile, short_title: str = Form(...), kind: str
     dest.mkdir(exist_ok=True)
     path = dest / f"{int(time.time())}_{Path(file.filename).name}"
     path.write_bytes(await file.read())
-    p = corpus.add_protocol(path, short_title.strip(), "sub" if kind == "sub" else "master",
+    p = corpus.add_protocol(path, short_title.strip(), kind if kind in ("sub", "local") else "master",
                             [h.strip().upper() for h in hospitals.split(",") if h.strip()])
     return {"ok": True, "id": p.id, "pages": len(p.pages)}
 
