@@ -60,6 +60,13 @@ resource "google_project_iam_member" "api_aiplatform" {
   member  = "serviceAccount:${google_service_account.api.email}"
 }
 
+# The storage client inside Agent Engine sets a quota project; the runtime identity must be allowed to use it.
+resource "google_project_iam_member" "api_serviceusage" {
+  project = var.project_id
+  role    = "roles/serviceusage.serviceUsageConsumer"
+  member  = "serviceAccount:${google_service_account.api.email}"
+}
+
 # ... and reads the corpus (objectAdmin so admin uploads can write back later)
 resource "google_storage_bucket_iam_member" "api_corpus" {
   bucket = google_storage_bucket.corpus.name
