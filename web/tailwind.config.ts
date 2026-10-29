@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-// Copied from rx-note-web/tailwind.config.ts (29 Oct 2026), trimmed to what this app uses:
-// the same token names so the copied components/ui primitives and calm theme resolve.
+// Token names match the components/ui primitives and the calm theme in app/globals.css.
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
@@ -61,7 +60,7 @@ export default {
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",
-				// Calm dashboard palette — warm paper, not clinical white. Values live in globals.css.
+				// Calm palette: warm paper. Values live in globals.css.
 				canvas: "hsl(var(--canvas) / <alpha-value>)",
 				sunken: "hsl(var(--sunken) / <alpha-value>)",
 				line: "hsl(var(--line) / <alpha-value>)",

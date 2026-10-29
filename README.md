@@ -32,7 +32,7 @@ Clinician ─ web/ (Next.js: Sources panel · Chat · Source viewer · Admin)
 2. `scripts/setup-gcp.sh` — project, APIs, bucket.
 3. `gcloud storage cp -r "gs://swg-workshop/use-case/1. Virtual Assistant/*" data/uc1/` (git-ignored).
 4. `uv run scripts/build_manifest.py` then `uv run scripts/ingest.py` — upload + metadata import (indexing takes minutes).
-5. `uv run adk api_server app` (port 8000) and, in `web/`, `pnpm install && pnpm dev` (port 3000).
+5. `uv run uvicorn app.server:api --port 8000` (agent API + protocols, PDF, admin, feedback) and, in `web/`, `pnpm install && pnpm dev` (port 3000).
 6. `uv run scripts/eval.py` — runs the 9 golden questions and writes `eval/results/<timestamp>.md`.
 
 ## Layout
@@ -46,8 +46,15 @@ eval/       golden questions
 docs/       USE-CASE.md (brief), DEMO.md (showcase script)
 ```
 
-## Verified in the lab project (29 Oct, morning)
+## Models
 
-APIs enabled, bucket created, datastore `bspho-protocols` created. Gemini ids that answer:
-`gemini-2.5-flash` (europe-west1, europe-west4, global), `gemini-2.5-pro` (global),
-`gemini-3-flash-preview` (global), `gemini-3.1-flash-lite` (global). Default `gemini-2.5-flash` in `europe-west1`.
+The agent runs on **Gemini 4 Argon** (`gemini-4-argon`, thinking level low) for reasoning over the protocols;
+**Gemini 3.8 Flash** (`gemini-3.8-flash`) is the fast model for non-agentic work (`GEMINI_FAST_MODEL`). Both are
+served from the global Vertex AI endpoint in the lab project; `gemini-3.5-flash`, `gemini-3.1-pro-preview` and
+`gemini-2.5-flash` also answer there. No vector index: retrieval is the agent's own list / outline / search / read
+loop over the extracted page text, so every citation is the PDF page the text came from.
+
+## Golden eval (first run, 29 Oct 11:50, Argon)
+
+Q3 FaR-RMS staging: correct, 27 page citations. Q4 150,000 WBC: asks AML or ALL first. Q5 adult hypertension:
+refuses with no medical content. See `eval/results/`.

@@ -1,7 +1,6 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { backendFetch } from "@/lib/backend";
 
-/** One row of data/uc1/manifest.jsonl (lane A builds it from the mapping table). */
+/** One protocol as the backend's GET /protocols lists it. */
 export type Protocol = {
   id: string;
   short_title: string;
@@ -9,9 +8,6 @@ export type Protocol = {
   kind: "master" | "sub";
   version: string;
   hospitals: string[];
-  gcs_uri: string;
-  /** Path relative to the manifest's folder (lane A's local copy), when the PDF is on disk. */
-  file?: string;
   pages?: number;
 };
 
@@ -25,7 +21,7 @@ export const HOSPITALS = ["UZA", "UZL", "CHU", "UCL", "HUDERF", "UZG"] as const;
 const ALL = [...HOSPITALS];
 const NOT_UZA = ALL.filter((h) => h !== "UZA");
 
-/** Six masters and two subs, so the UI can be built before the corpus is indexed. UZG has everything. */
+/** Six masters and two subs, served when the backend is down so the UI still works. UZG has everything. */
 export const MOCK_PROTOCOLS: Protocol[] = [
   mock("alltogether1", "ALLTogether1", "ALLTogether1 Master Protocol v6.0", "master", "6.0", ALL),
   mock("chip-aml22", "CHIP-AML22", "CHIP-AML22: Childhood Intensive Protocol for AML v2.2", "master", "2.2", ALL),
@@ -37,52 +33,11 @@ export const MOCK_PROTOCOLS: Protocol[] = [
   mock("alltogether-glucarpidase", "ALLTogether Glucarpidase guideline", "ALLTogether1 Glucarpidase guideline v1.1", "sub", "1.1", ALL),
 ];
 
-function mock(
-  id: string,
-  short_title: string,
-  full_title: string,
-  kind: Protocol["kind"],
-  version: string,
-  hospitals: string[],
-): Protocol {
-  return { id, short_title, full_title, kind, version, hospitals, gcs_uri: "" };
+function mock(id: string, short_title: string, full_title: string, kind: Protocol["kind"], version: string, hospitals: string[]): Protocol {
+  return { id, short_title, full_title, kind, version, hospitals, pages: 2 };
 }
 
-/** Where the manifest lives: MANIFEST_PATH, else ../data/uc1/manifest.jsonl next to web/. */
-export function manifestPath(): string {
-  // turbopackIgnore: the path comes from the environment; tracing it would bundle the whole repo.
-  return path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.MANIFEST_PATH ?? "../data/uc1/manifest.jsonl");
-}
-
-/** Rows added through the Admin tab when the manifest is not writable. */
-export function uploadsDir(): string {
-  return path.resolve(process.cwd(), ".uploads");
-}
-export function uploadsManifestPath(): string {
-  return path.join(uploadsDir(), "manifest.jsonl");
-}
-
-async function readJsonl(file: string): Promise<Protocol[]> {
-  let text: string;
-  try {
-    text = await fs.readFile(file, "utf8");
-  } catch {
-    return [];
-  }
-  const rows: Protocol[] = [];
-  for (const line of text.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      rows.push(normalise(JSON.parse(trimmed)));
-    } catch {
-      // A malformed line is skipped, not fatal: the rest of the list still renders.
-    }
-  }
-  return rows;
-}
-
-/** Accepts the manifest's loose shape (hospitals as a list or comma string, version missing). */
+/** Accepts a loose row (hospitals as a list or comma string, version null) and returns the UI's shape. */
 function normalise(raw: Record<string, unknown>): Protocol {
   const shortTitle = String(raw.short_title ?? raw.id ?? "");
   const fullTitle = String(raw.full_title ?? shortTitle);
@@ -96,32 +51,10 @@ function normalise(raw: Record<string, unknown>): Protocol {
     short_title: shortTitle,
     full_title: fullTitle,
     kind: raw.kind === "sub" ? "sub" : "master",
-    version: String(raw.version ?? versionFrom(fullTitle) ?? versionFrom(String(raw.gcs_uri ?? "")) ?? ""),
+    version: raw.version == null ? versionFrom(fullTitle) ?? "" : String(raw.version),
     hospitals,
-    gcs_uri: String(raw.gcs_uri ?? ""),
-    file: typeof raw.file === "string" && raw.file ? raw.file : undefined,
     pages: typeof raw.pages === "number" ? raw.pages : undefined,
   };
-}
-
-/** The local PDF for a manifest row, or an admin upload, if it is on disk. Never leaves the data folder. */
-export async function localPdfPath(p: Protocol): Promise<string | undefined> {
-  const candidates: string[] = [];
-  if (p.file) {
-    const root = path.dirname(manifestPath());
-    const resolved = path.resolve(root, p.file);
-    if (resolved.startsWith(root + path.sep)) candidates.push(resolved);
-  }
-  candidates.push(path.join(uploadsDir(), `${p.id}.pdf`));
-  for (const c of candidates) {
-    try {
-      await fs.access(c, fs.constants.R_OK);
-      return c;
-    } catch {
-      // try the next one
-    }
-  }
-  return undefined;
 }
 
 export function versionFrom(text: string): string | undefined {
@@ -133,27 +66,25 @@ export function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-/** The list the app shows: the manifest (or the mock) plus any admin uploads, deduplicated by id. */
-export async function listProtocols(): Promise<ProtocolsResponse> {
-  const base = await readJsonl(manifestPath());
-  const uploads = await readJsonl(uploadsManifestPath());
-  const merged = new Map<string, Protocol>();
-  for (const p of base.length ? base : MOCK_PROTOCOLS) merged.set(p.id, p);
-  for (const p of uploads) merged.set(p.id, p);
-  return { hospitals: [...HOSPITALS], protocols: [...merged.values()] };
+/** GET {ADK_URL}/protocols, or the mock when the backend is down. `mock` says which one you got. */
+export async function listProtocols(): Promise<ProtocolsResponse & { mock: boolean }> {
+  const res = await backendFetch("/protocols", { cache: "no-store" });
+  if (res?.ok) {
+    try {
+      const json = (await res.json()) as { hospitals?: unknown; protocols?: unknown };
+      const protocols = Array.isArray(json.protocols) ? json.protocols.map((r) => normalise(r as Record<string, unknown>)) : [];
+      const hospitals = Array.isArray(json.hospitals) && json.hospitals.length ? json.hospitals.map(String) : [...HOSPITALS];
+      return { hospitals, protocols, mock: false };
+    } catch {
+      console.error("protocols: backend returned malformed JSON");
+    }
+  } else if (res) {
+    console.error("protocols: backend error", { status: res.status });
+  }
+  return { hospitals: [...HOSPITALS], protocols: MOCK_PROTOCOLS, mock: true };
 }
 
 export async function findProtocol(id: string): Promise<Protocol | undefined> {
   const { protocols } = await listProtocols();
   return protocols.find((p) => p.id === id);
-}
-
-export async function manifestIsWritable(): Promise<boolean> {
-  const file = manifestPath();
-  try {
-    await fs.access(file, fs.constants.W_OK);
-    return true;
-  } catch {
-    return false;
-  }
 }

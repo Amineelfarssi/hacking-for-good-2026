@@ -22,13 +22,18 @@ export function AppShell() {
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
   const [includeSubs, setIncludeSubs] = useState(false);
   const [viewer, setViewer] = useState<ViewerTarget | null>(null);
-  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+  // One session per selection: the agent reads hospital/protocol_ids/include_subprotocols from the session
+  // state set at creation, so any change (or "New conversation") gets a fresh id. Chat history stays on screen.
+  const [sessionBase, setSessionBase] = useState(() => crypto.randomUUID().slice(0, 8));
   const urlCache = useRef(new Map<string, string>());
 
   const loadProtocols = useCallback(
     () =>
       fetchProtocols()
-        .then(setData)
+        .then((json) => {
+          setData(json);
+          if (json.mock) toast({ title: "Protocol server not running", description: "Showing a built-in sample list.", duration: 4000 });
+        })
         .catch(() => toast({ title: "Could not load the protocol list", variant: "destructive" })),
     [toast],
   );
@@ -91,7 +96,11 @@ export function AppShell() {
     [toast],
   );
 
-  const newConversation = useCallback(() => setSessionId(crypto.randomUUID()), []);
+  const sessionId = useMemo(
+    () => `${sessionBase}-${hashOf(`${hospital}|${includeSubs}|${[...protocolIds].sort().join(",")}`)}`,
+    [sessionBase, hospital, includeSubs, protocolIds],
+  );
+  const newConversation = useCallback(() => setSessionBase(crypto.randomUUID().slice(0, 8)), []);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -133,7 +142,7 @@ export function AppShell() {
             </aside>
             <section className="min-h-0 min-w-0 border-b border-line lg:border-b-0 lg:border-r">
               <ChatPanel
-                key={sessionId}
+                key={sessionBase}
                 sessionId={sessionId}
                 hospital={hospital}
                 protocolIds={protocolIds}
@@ -156,7 +165,17 @@ export function AppShell() {
   );
 }
 
-async function fetchProtocols(): Promise<ProtocolsResponse> {
+/** Short, stable hash of the selection, so the session id changes exactly when the selection does. */
+function hashOf(text: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36);
+}
+
+async function fetchProtocols(): Promise<ProtocolsResponse & { mock?: boolean }> {
   const res = await fetch("/api/protocols");
   if (!res.ok) throw new Error(`protocols ${res.status}`);
   return (await res.json()) as ProtocolsResponse;

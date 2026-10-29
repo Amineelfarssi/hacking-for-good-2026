@@ -10,6 +10,8 @@ from app import corpus
 
 def _scope(tool_context: ToolContext, include_subprotocols: bool = False) -> tuple[str, list[corpus.Protocol]]:
     st = tool_context.state
+    if "hospital" not in st and isinstance(st.get("state"), dict):  # tolerate a wrapped {"state": {...}} body
+        st = st["state"]
     hospital = st.get("hospital") or "UZG"
     selected = set(st.get("protocol_ids") or [])
     include_sub = bool(st.get("include_subprotocols")) or include_subprotocols

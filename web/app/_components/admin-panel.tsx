@@ -43,9 +43,12 @@ export function AdminPanel({ hospitals, protocols, onUploaded }: Props) {
     setBusy(true);
     try {
       const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
-      const json = (await res.json()) as { ok?: boolean; id?: string; error?: string };
+      const json = (await res.json()) as { ok?: boolean; id?: string; pages?: number; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `upload failed (${res.status})`);
-      toast({ title: "Protocol added", description: `${fd.get("short_title")} is now listed for ${[...picked].join(", ")}.` });
+      toast({
+        title: "Protocol added",
+        description: `${fd.get("short_title")}${json.pages ? ` (${json.pages} pages)` : ""} is now searchable for ${[...picked].join(", ")}.`,
+      });
       await onUploaded();
       setFormKey((k) => k + 1);
     } catch (err) {
@@ -63,7 +66,7 @@ export function AdminPanel({ hospitals, protocols, onUploaded }: Props) {
         <CardHeader className="pb-4">
           <CardTitle className="text-[15px] font-medium">Add a protocol or amendment</CardTitle>
           <CardDescription className="text-xs text-ink-faint">
-            The PDF is stored, added to the manifest and indexed for the hospitals you tick.
+            The PDF is stored, its pages are extracted and it becomes searchable at once for the hospitals you tick.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
+import { ADK_URL, APP_NAME, USER_ID } from "@/lib/backend";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
-
-const ADK_URL = (process.env.ADK_URL ?? "http://localhost:8000").replace(/\/$/, "");
-const APP_NAME = process.env.ADK_APP_NAME ?? "app";
-const USER_ID = process.env.ADK_USER_ID ?? "demo";
 
 type ChatBody = {
   message: string;
@@ -34,7 +31,8 @@ const SSE_HEADERS = {
 /**
  * POST /api/chat { message, session_id?, hospital, protocol_ids, include_subprotocols, history? }
  * → SSE stream of UiEvent. Proxies the ADK api_server (ADK_URL, default http://localhost:8000):
- * creates or reuses the session with the selection in its state, then forwards /run_sse.
+ * creates or reuses the session with the selection in its state, then forwards /run_sse. The browser starts a
+ * new session whenever the selection changes, so the state set at creation is the one the agent reads.
  * When the ADK server is unreachable it streams a generic mock answer so the UI can be developed.
  */
 export async function POST(req: Request) {
@@ -110,8 +108,6 @@ async function openAdkStream(
         session_id: sessionId,
         new_message: { role: "user", parts: [{ text: message }] },
         streaming: true,
-        // Also sent per run, so a changed selection reaches an existing session.
-        state_delta: state,
       }),
       signal,
     });

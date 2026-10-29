@@ -15,13 +15,6 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
-        // A fact the doctor still has to check against its page (records v3).
-        // amber-800 on amber-50 keeps 12px text above WCAG AA.
-        "to-check": "border-amber-200 bg-amber-50 text-amber-800",
-        // Records "Checked": a reading picked, not yet confirmed (theme tokens, light and dark).
-        checked: "border-checked-line bg-checked-bg text-checked",
-        // High-risk flag (spec 0022): rose like the primary, rose-700 on rose-50 keeps 12px text above WCAG AA.
-        "high-risk": "border-rose-200 bg-rose-50 text-rose-700",
       },
     },
     defaultVariants: {
