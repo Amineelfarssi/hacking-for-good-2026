@@ -9,3 +9,5 @@ __pycache__/
 eval/results/
 .DS_Store
 data/uc1/
+.agent_engine_tmp/
+app_tmp*/

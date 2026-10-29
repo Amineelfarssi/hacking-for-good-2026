@@ -21,7 +21,7 @@ from app.agent import root_agent  # noqa: E402
 
 QUESTIONS = ROOT / "eval" / "questions.jsonl"
 OUT = ROOT / "eval" / "results"
-CITE = re.compile(r"\[[^\]]+?, p\. ?\d+[^\]]*\]")
+CITE = re.compile(r"[^;\[\]]+?, pp?\.? ?\d+")  # one citation; several may share a bracket
 
 
 async def ask(runner: InMemoryRunner, session_id: str, q: str) -> tuple[str, list[str]]:
