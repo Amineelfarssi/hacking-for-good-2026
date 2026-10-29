@@ -5,10 +5,11 @@ import os
 
 from dotenv import load_dotenv
 from google.adk.agents import Agent
+from google.adk.tools import AgentTool, google_search
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
 
-from app.tools import get_outline, list_protocols, read_pages, search_pages, search_pubmed
+from app.tools import get_drug_label, get_outline, list_protocols, read_pages, search_pages, search_pubmed
 
 load_dotenv()
 if os.environ.get("FORCE_GLOBAL_LOCATION") == "1":  # Agent Engine pins GOOGLE_CLOUD_LOCATION to its region; Argon is global
@@ -88,17 +89,22 @@ HOW TO WORK
 7. On request you may translate, summarise or rewrite an answer in lay language (e.g. Dutch for a 13-year-old
    patient), keeping every fact grounded in the protocol and adding nothing from outside it.
 
-EXTERNAL EVIDENCE (PubMed)
-- The clinician may ask what outside the protocols could affect or collide with the treatment (fever and
-  neutropenia, infection prophylaxis, drug interactions, vaccination, supportive care), or a question in scope
-  may not be covered by the protocols. Then, and only then: first report what the protocols in scope say, with
-  citations (or that they do not cover it); then call search_pubmed with a focused query (condition +
-  "children"/"pediatric" + guideline/consensus/review) and add a final block headed
-  "External evidence (PubMed, not part of the protocols)": up to 5 items, each one line with the finding and
-  a tag [PubMed <pmid>, <year>]. State collisions explicitly: "Protocol: … [citation]. External guidance: …
-  [PubMed …]. For a trial patient the protocol prevails; discuss deviations with the study team."
-- Never use search_pubmed for an out-of-scope question (adult medicine, non-oncology): refuse as above.
-- Never quote doses or thresholds from PubMed as if they were protocol rules; never merge the two blocks.
+EXTERNAL EVIDENCE (eager: PubMed, web guidelines, drug labels)
+- Whenever an in-scope question involves a complication, co-medication, infection, fever, toxicity management,
+  prophylaxis, vaccination, nutrition or any supportive-care topic — or the protocols in scope do not fully
+  cover the question — consult external sources WITHOUT waiting to be asked, after the protocol block:
+  1. search_pubmed (condition + "children"/"pediatric" + guideline/consensus/review);
+  2. web_evidence (Google Search grounding) for current society guidelines, regulators and drug information
+     on the open web, when PubMed is thin or the topic is practical (e.g. vaccination schedules, antiemetics);
+  3. get_drug_label for every co-medication or supportive drug mentioned, to check interactions, boxed
+     warnings and contraindications against the protocol's drugs.
+- Structure: first "What the protocol says" with citations (or that it does not cover it). Then one block
+  headed "External evidence (not part of the protocols)" with up to 6 one-line findings, each tagged
+  [PubMed <pmid>, <year>], [Web: <domain>, <year>] or [FDA label: <drug>]. Then "Possible collisions": each
+  as "Protocol: … [citation] vs external: … [tag]" with one line on what to do: the protocol prevails for a
+  trial patient; deviations go to the study team / PI. If nothing collides, say so.
+- Out-of-scope questions (adult medicine, non-oncology) are still refused before any tool runs.
+- Never quote doses or thresholds from external sources as protocol rules; never merge the blocks.
 
 FORMATTING
 - Plain text and simple Markdown only. Never LaTeX or math markup ($…$, \\text{}, _{ }, ^{ }). Write units and
@@ -117,13 +123,25 @@ def _reset_read_budget(callback_context: CallbackContext) -> None:
 SYSTEM_PROMPT = SYSTEM_PROMPT.replace("__REFUSAL__", REFUSAL)
 
 
+web_evidence = Agent(
+    name="web_evidence",
+    model=FAST_MODEL,
+    description="Searches the open web (Google Search grounding) for current clinical guidelines, regulator notices and drug information on one focused topic; returns findings with source domain and year.",
+    instruction=("You are a search assistant for a paediatric oncology protocol assistant. Search the web for the topic "
+                 "you are given, prefer society guidelines (SIOP, COG, ESMO, IDSA, ASCO, NICE, WHO), regulators (EMA, "
+                 "FDA, FAMHP) and official drug information. Return at most 5 findings, one line each: finding — source "
+                 "domain, year, URL. Say 'nothing reliable found' when that is the case. No advice of your own."),
+    tools=[google_search],
+)
+
 root_agent = Agent(
     name="oncoprotocol_assist",
     before_agent_callback=_reset_read_budget,
     model=MODEL,
     description="Grounded search over BSPHO paediatric haemato-oncology protocols with page citations.",
     instruction=SYSTEM_PROMPT,
-    tools=[list_protocols, get_outline, search_pages, read_pages, search_pubmed],
+    tools=[list_protocols, get_outline, search_pages, read_pages, search_pubmed, get_drug_label,
+           AgentTool(agent=web_evidence)],
     generate_content_config=types.GenerateContentConfig(
         temperature=0.1,
         thinking_config=types.ThinkingConfig(thinking_level=THINKING) if THINKING else None,
