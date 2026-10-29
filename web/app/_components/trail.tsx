@@ -24,7 +24,7 @@ export function Trail({ events, streaming, durationMs, onOpenPage }: Props) {
   if (events.length === 0) return null;
 
   return (
-    <Collapsible open={open} onOpenChange={setToggled} className="mt-2 rounded-lg bg-sunken/60 text-xs">
+    <Collapsible open={open} onOpenChange={setToggled} className="mt-3 rounded-lg bg-sunken/60 font-sans text-xs">
       <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-ink-soft hover:bg-sunken">
         <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", !open && "-rotate-90")} />
         <span className="font-medium text-ink">Trail</span>
@@ -114,7 +114,7 @@ function Node({
       title={title}
       className={cn(
         "inline-flex max-w-[200px] items-center truncate rounded-lg border px-1.5 text-xs leading-5 animate-fade-up",
-        solid ? "border-cite-line bg-cite-bg text-cite-ink" : "border-transparent bg-white/70 text-ink-soft",
+        solid ? "border-line bg-surface text-ink" : "border-transparent bg-surface/60 text-ink-soft",
         pending && "border-dashed border-ink-faint text-ink-faint",
         current && "border-primary/70 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]",
         onClick && "cursor-pointer hover:border-primary/60",

@@ -27,4 +27,6 @@ export type ChatMessage = {
   finishedAt?: number;
   /** The selection the question was asked against. */
   scope?: AnswerScope;
+  /** The reader stopped the answer before it finished. */
+  stopped?: boolean;
 };

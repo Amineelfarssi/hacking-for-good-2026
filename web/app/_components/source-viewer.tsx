@@ -1,71 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, ExternalLink, FileSearch, Loader2, PanelRightClose, PanelRightOpen } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronLeft, ChevronRight, ExternalLink, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconButton } from "./app-shell";
 import type { ViewerTarget } from "./types";
 
 type Match = "exact" | "fuzzy" | "none";
 type PageImage = { url: string; highlights: number; page: number; match: Match } | { error: string };
 
 const MATCH_LABEL: Record<Match, string> = {
-  exact: "passage highlighted",
-  fuzzy: "closest passage highlighted",
-  none: "page only",
+  exact: "Cited passage highlighted",
+  fuzzy: "Closest passage highlighted",
+  none: "Passage not located, showing the cited page",
 };
-
-type Props = { target: ViewerTarget | null; open: boolean; onToggle: () => void };
 
 /**
  * The cited page as an image with the quoted passage highlighted, from /api/page/<id>/<page>?q=.
- * Collapses to a 48px rail. The server may render a neighbouring page when the passage sits there (X-Page);
- * the header, Prev/Next and the PDF link then follow the rendered page. When the page image is not available
- * (server down) the PDF iframe takes its place.
+ * The server may render a neighbouring page when the passage sits there (X-Page); the header, Prev/Next and the
+ * PDF link then follow the rendered page. Prev/next move within the protocol; "Open PDF" is the plain PDF at that
+ * page. When the page image is not available (server down) the PDF iframe takes its place.
  */
-export function SourceViewer({ target, open, onToggle }: Props) {
-  if (!open) {
-    return (
-      <div className="rail">
-        <IconButton label="Show source" onClick={onToggle}>
-          <PanelRightOpen className="size-4" />
-        </IconButton>
-        {target && (
-          <span className="text-xs text-ink-faint" title={target.protocol.short_title}>
-            p. {target.page}
-          </span>
-        )}
-      </div>
-    );
-  }
-  if (!target) {
-    return (
-      <div className="flex h-full flex-col">
-        <div className="flex h-10 shrink-0 items-center justify-between pl-3 pr-1">
-          <span className="text-sm font-medium text-ink">Source</span>
-          <IconButton label="Hide source" onClick={onToggle}>
-            <PanelRightClose className="size-4" />
-          </IconButton>
-        </div>
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-ink-faint">
-          <FileSearch className="size-6" strokeWidth={1.5} />
-          <p className="text-xs">Click a citation to see the page.</p>
-        </div>
-      </div>
-    );
-  }
+export function SourceViewer({ target, onClose }: { target: ViewerTarget; onClose: () => void }) {
   // A new citation remounts the body, so the page resets to the cited one.
-  return <ViewerBody key={`${target.protocol.id}:${target.page}:${target.query ?? ""}`} target={target} onToggle={onToggle} />;
+  return <ViewerBody key={`${target.protocol.id}:${target.page}:${target.query ?? ""}`} target={target} onClose={onClose} />;
 }
 
-function ViewerBody({ target, onToggle }: { target: ViewerTarget; onToggle: () => void }) {
+function ViewerBody({ target, onClose }: { target: ViewerTarget; onClose: () => void }) {
   const [page, setPage] = useState(target.page);
   // The loaded image is tagged with the request it answers, so a stale one never shows for a new page.
   const [loaded, setLoaded] = useState<{ key: string; data: PageImage } | null>(null);
   const q = page === target.page && target.query ? `?q=${encodeURIComponent(target.query)}` : "";
   const requestKey = `/api/page/${encodeURIComponent(target.protocol.id)}/${page}${q}`;
   const image = loaded?.key === requestKey ? loaded.data : null;
+  // The page on screen: what the server rendered, else what was asked for.
   const shownPage = image && "page" in image ? image.page : page;
 
   useEffect(() => {
@@ -103,81 +71,87 @@ function ViewerBody({ target, onToggle }: { target: ViewerTarget; onToggle: () =
   const last = target.protocol.pages;
   const title = `${target.protocol.short_title}${target.protocol.version ? ` v${target.protocol.version}` : ""}`;
   const match = image && "match" in image ? image.match : null;
+  const onCited = shownPage === target.page || (page === target.page && match !== null);
   const movedPage = match !== null && shownPage !== target.page && page === target.page;
+  const prev = () => setPage(Math.max(1, shownPage - 1));
+  const next = () => setPage(last ? Math.min(last, shownPage + 1) : shownPage + 1);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex h-10 shrink-0 items-center gap-1 pl-3 pr-1">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink" title={target.protocol.full_title}>
-          {title}
-        </span>
-        {match !== null && (
-          <Badge
-            variant="secondary"
-            className={cn("hidden whitespace-nowrap px-1.5 py-0 text-xs font-normal xl:inline-flex", match === "none" ? "text-ink-soft" : "border-cite-line bg-cite-bg text-cite-ink")}
-          >
-            {MATCH_LABEL[match]}
-          </Badge>
-        )}
-        <IconButton label="Previous page" onClick={() => setPage(Math.max(1, shownPage - 1))} disabled={shownPage <= 1}>
-          <ChevronLeft className="size-4" />
-        </IconButton>
-        <span className="whitespace-nowrap text-xs text-ink-soft">
-          p. {shownPage}
-          {last ? ` / ${last}` : ""}
-        </span>
-        <IconButton label="Next page" onClick={() => setPage(last ? Math.min(last, shownPage + 1) : shownPage + 1)} disabled={!!last && shownPage >= last}>
-          <ChevronRight className="size-4" />
-        </IconButton>
-        <IconButton label="Open PDF in a new tab" href={pdfHref}>
+    <div
+      className="flex h-full flex-col bg-surface"
+      // Arrow keys page through the protocol while the viewer has focus.
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft" && shownPage > 1) prev();
+        if (e.key === "ArrowRight" && !(last && shownPage >= last)) next();
+      }}
+    >
+      <div className="flex shrink-0 items-start gap-2 border-b border-divider px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate font-serif text-[17px] font-semibold leading-6 text-ink">{title}</h2>
+          <p className="truncate text-[12.5px] text-ink-faint" title={target.protocol.full_title}>
+            {target.protocol.full_title}
+          </p>
+        </div>
+        <a
+          href={pdfHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-[13px] font-semibold text-ink-soft transition-colors hover:bg-sunken hover:text-ink"
+        >
           <ExternalLink className="size-4" />
-        </IconButton>
-        <IconButton label="Hide source" onClick={onToggle}>
-          <PanelRightClose className="size-4" />
+          <span className="hidden sm:inline">Open PDF</span>
+        </a>
+        <IconButton label="Close source (Esc)" onClick={onClose}>
+          <X />
         </IconButton>
       </div>
-      {movedPage && (
-        <p className="shrink-0 px-3 pb-1 text-xs text-ink-faint">
-          cited p. {target.page}, passage found on p. {shownPage}
-        </p>
-      )}
-      <div className="min-h-0 flex-1 overflow-auto bg-sunken">
+
+      <div className="flex shrink-0 items-center gap-2 border-b border-divider px-2 py-1.5">
+        <IconButton label="Previous page" disabled={shownPage <= 1} onClick={prev}>
+          <ChevronLeft />
+        </IconButton>
+        <div className="flex min-w-0 flex-1 flex-col items-center leading-tight">
+          <span className="text-[13.5px] font-semibold text-ink">
+            Page {shownPage}
+            {last && shownPage <= last ? <span className="font-normal text-ink-faint"> of {last}</span> : null}
+          </span>
+          {movedPage ? (
+            <span className="truncate text-[12px] text-ink-faint">
+              Cited p. {target.page}, passage found on p. {shownPage}
+            </span>
+          ) : !onCited ? (
+            <button type="button" onClick={() => setPage(target.page)} className="text-[12px] font-semibold text-primary-ink hover:underline">
+              Back to cited p. {target.page}
+            </button>
+          ) : match !== null ? (
+            <span className={cn("truncate text-[12px]", match === "none" ? "text-caution" : "text-ink-faint")}>{MATCH_LABEL[match]}</span>
+          ) : null}
+        </div>
+        <IconButton label="Next page" disabled={!!last && shownPage >= last} onClick={next}>
+          <ChevronRight />
+        </IconButton>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto bg-sunken p-3 sm:p-4">
         {image === null && (
-          <div className="flex h-full items-center justify-center text-ink-faint">
-            <Loader2 className="size-5 animate-spin" />
+          <div className="flex h-full items-center justify-center gap-2 text-[13px] text-ink-faint">
+            <Loader2 className="size-5 animate-spin text-primary" />
+            Loading page {page}
           </div>
         )}
         {image && "url" in image && (
           // eslint-disable-next-line @next/next/no-img-element -- a blob URL rendered at column width
-          <img src={image.url} alt={`${target.protocol.short_title}, page ${shownPage}`} className="block w-full bg-white" />
+          <img
+            src={image.url}
+            alt={`${target.protocol.short_title}, page ${shownPage}`}
+            className="mx-auto block w-full max-w-[52rem] rounded-sm bg-white shadow-[0_1px_3px_hsl(var(--ink)/0.12)]"
+          />
         )}
         {image && "error" in image && (
-          <iframe key={pdfHref} src={pdfHref} title={`${target.protocol.short_title} page ${shownPage}`} className="h-full w-full border-0" />
+          <iframe key={pdfHref} src={pdfHref} title={`${target.protocol.short_title} page ${shownPage}`} className="h-full w-full rounded-sm border-0 bg-white" />
         )}
       </div>
     </div>
-  );
-}
-
-function IconButton({ label, onClick, href, disabled, children }: { label: string; onClick?: () => void; href?: string; disabled?: boolean; children: React.ReactNode }) {
-  const cls = cn(
-    "flex size-8 shrink-0 items-center justify-center rounded-md text-ink-soft hover:bg-sunken hover:text-ink",
-    disabled && "pointer-events-none opacity-40",
-  );
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {href ? (
-          <a href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className={cls}>
-            {children}
-          </a>
-        ) : (
-          <button type="button" onClick={onClick} aria-label={label} disabled={disabled} className={cls}>
-            {children}
-          </button>
-        )}
-      </TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
-    </Tooltip>
   );
 }
