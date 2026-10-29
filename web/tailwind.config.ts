@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-// Token names match the components/ui primitives and the calm theme in app/globals.css.
+// Token names match the components/ui primitives; values live in app/globals.css.
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
@@ -14,7 +14,8 @@ export default {
 	theme: {
 		extend: {
 			fontFamily: {
-				sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+				sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+				heading: ["var(--font-heading)", "Georgia", "serif"],
 			},
 			fontSize: {
 				xs: ["var(--fs-xs, 0.75rem)", { lineHeight: "1rem" }],
@@ -60,7 +61,14 @@ export default {
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",
-				// Calm palette: warm paper. Values live in globals.css.
+				// Citation / highlight accent (amber): chips, highlighted-passage badge.
+				cite: {
+					DEFAULT: "hsl(var(--cite) / <alpha-value>)",
+					ink: "hsl(var(--cite-ink) / <alpha-value>)",
+					bg: "hsl(var(--cite-bg) / <alpha-value>)",
+					line: "hsl(var(--cite-line) / <alpha-value>)",
+				},
+				// Neutral surfaces. Values live in globals.css.
 				canvas: "hsl(var(--canvas) / <alpha-value>)",
 				sunken: "hsl(var(--sunken) / <alpha-value>)",
 				line: "hsl(var(--line) / <alpha-value>)",

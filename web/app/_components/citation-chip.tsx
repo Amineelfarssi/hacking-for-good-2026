@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { citationLabel, type Citation } from "@/lib/citations";
 
-/** `[Doc vX, p. N, §Section]` as a quiet chip: hairline border, rose only on hover. */
+/** `[Doc vX, p. N, §Section]` as an amber reference chip: the one accent reserved for sources. */
 export function CitationChip({ citation, onClick, className }: { citation: Citation; onClick: () => void; className?: string }) {
   return (
     <button
@@ -11,12 +11,12 @@ export function CitationChip({ citation, onClick, className }: { citation: Citat
       onClick={onClick}
       title={citationLabel(citation)}
       className={cn(
-        "mx-0.5 inline-flex max-w-full items-baseline gap-1 rounded-lg border border-line bg-white px-1.5 align-baseline text-xs leading-5 text-ink-soft transition-colors hover:border-primary hover:text-ink",
+        "mx-0.5 inline-flex max-w-full items-baseline gap-1 rounded-lg border border-cite-line bg-cite-bg px-1.5 align-baseline text-xs font-medium leading-5 text-cite-ink transition-colors hover:border-cite hover:bg-cite/20",
         className,
       )}
     >
       <span className="truncate">{citation.doc}</span>
-      <span className="shrink-0">{citation.pageEnd ? `pp. ${citation.page}–${citation.pageEnd}` : `p. ${citation.page}`}</span>
+      <span className="shrink-0 font-normal">{citation.pageEnd ? `pp. ${citation.page}–${citation.pageEnd}` : `p. ${citation.page}`}</span>
     </button>
   );
 }
