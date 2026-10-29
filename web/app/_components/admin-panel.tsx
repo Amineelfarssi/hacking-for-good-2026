@@ -122,7 +122,7 @@ export function AdminPanel({ hospitals, protocols, onUploaded }: Props) {
                 </p>
               </div>
               <Badge variant="outline" className="border-line text-xs font-normal text-ink-soft">
-                {p.kind === "sub" ? "sub-protocol" : "master"}
+                {p.kind === "sub" ? "sub-protocol" : p.kind === "local" ? "local document" : "master"}
               </Badge>
               <div className="flex flex-wrap gap-1">
                 {p.hospitals.map((h) => (
