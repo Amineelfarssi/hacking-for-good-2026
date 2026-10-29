@@ -7,6 +7,8 @@ from google.adk.tools import ToolContext
 
 from app import corpus
 
+MAX_READS_PER_TURN = 5  # a clinician is waiting: after this many page reads the model must answer with what it has
+
 
 def _scope(tool_context: ToolContext, include_subprotocols: bool = False) -> tuple[str, list[corpus.Protocol]]:
     st = tool_context.state
@@ -54,10 +56,15 @@ def search_pages(query: str, tool_context: ToolContext, protocol_ids: list[str] 
     return corpus.search(query, pool)
 
 
-def read_pages(protocol_id: str, start_page: int, end_page: int) -> dict:
+def read_pages(protocol_id: str, start_page: int, end_page: int, tool_context: ToolContext) -> dict:
     """Read the full text of pages start_page..end_page (max 12 per call) of one protocol. Read the pages around
     a search hit before answering; quote thresholds, doses and criteria verbatim from this text."""
     p = corpus.get(protocol_id)
     if not p:
         return {"error": f"unknown protocol_id {protocol_id}"}
+    reads = int(tool_context.state.get("_reads", 0)) + 1
+    tool_context.state["_reads"] = reads
+    if reads > MAX_READS_PER_TURN:
+        return {"error": f"read budget for this turn is used up ({MAX_READS_PER_TURN} reads). Answer now with the "
+                         "pages you have read, cite them, and offer to continue if the clinician wants more."}
     return corpus.read(p, start_page, end_page)

@@ -5,6 +5,7 @@ import os
 
 from dotenv import load_dotenv
 from google.adk.agents import Agent
+from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
 
 from app.tools import get_outline, list_protocols, read_pages, search_pages
@@ -63,8 +64,13 @@ NEVER
 - Never include patient identifiers in your answers; the vignettes are synthetic.
 """
 
+def _reset_read_budget(callback_context: CallbackContext) -> None:
+    callback_context.state["_reads"] = 0
+
+
 root_agent = Agent(
     name="oncoprotocol_assist",
+    before_agent_callback=_reset_read_budget,
     model=MODEL,
     description="Grounded search over BSPHO paediatric haemato-oncology protocols with page citations.",
     instruction=SYSTEM_PROMPT,
