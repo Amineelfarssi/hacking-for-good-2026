@@ -1,0 +1,61 @@
+"""Agent tools. Scope (hospital, selected protocols, sub-protocols on/off) comes from the session state that the
+UI sets; the model cannot widen it except by asking for a sub-protocol deep dive the clinician agreed to."""
+
+from __future__ import annotations
+
+from google.adk.tools import ToolContext
+
+from app import corpus
+
+
+def _scope(tool_context: ToolContext, include_subprotocols: bool = False) -> tuple[str, list[corpus.Protocol]]:
+    st = tool_context.state
+    hospital = st.get("hospital") or "UZG"
+    selected = set(st.get("protocol_ids") or [])
+    include_sub = bool(st.get("include_subprotocols")) or include_subprotocols
+    pool = corpus.at_hospital(hospital, include_sub=include_sub)
+    if selected:
+        pool = [p for p in pool if p.id in selected or (include_sub and p.kind == "sub")]
+    return hospital, pool
+
+
+def list_protocols(tool_context: ToolContext) -> dict:
+    """List the protocols in scope for this conversation: the clinician's hospital, the protocols they selected,
+    and whether sub-protocols (ALLTogether1 guidelines) are included. Call this first when unsure which
+    protocol a question belongs to, or to tell the clinician which protocols you can see."""
+    hospital, pool = _scope(tool_context)
+    return {"hospital": hospital, "include_subprotocols": bool(tool_context.state.get("include_subprotocols")),
+            "protocols": [{"id": p.id, "title": p.label, "kind": p.kind, "pages": len(p.pages),
+                           "full_title": p.full_title[:160]} for p in pool]}
+
+
+def get_outline(protocol_id: str) -> dict:
+    """Table of contents of one protocol (section titles with page numbers). Use it to find the right section
+    before reading pages, and to name the section in your citation."""
+    p = corpus.get(protocol_id)
+    if not p:
+        return {"error": f"unknown protocol_id {protocol_id}"}
+    return {"protocol": p.label, "protocol_id": p.id, "pages": len(p.pages), "outline": corpus.outline_of(p)}
+
+
+def search_pages(query: str, tool_context: ToolContext, protocol_ids: list[str] | None = None,
+                 include_subprotocols: bool = False) -> dict:
+    """Keyword search over the page text of the protocols in scope. `query` is a case-insensitive regular
+    expression: separate synonyms with `|`, e.g. "hyperleukocytosis|leukostasis|WBC ?> ?100". Returns the pages
+    with hits (most matches first) and a snippet each. Narrow with `protocol_ids`; set
+    `include_subprotocols=True` only after the clinician agreed to a sub-protocol deep dive."""
+    _, pool = _scope(tool_context, include_subprotocols)
+    if protocol_ids:
+        pool = [p for p in pool if p.id in set(protocol_ids)]
+    if not pool:
+        return {"error": "no protocol in scope matches protocol_ids; call list_protocols"}
+    return corpus.search(query, pool)
+
+
+def read_pages(protocol_id: str, start_page: int, end_page: int) -> dict:
+    """Read the full text of pages start_page..end_page (max 12 per call) of one protocol. Read the pages around
+    a search hit before answering; quote thresholds, doses and criteria verbatim from this text."""
+    p = corpus.get(protocol_id)
+    if not p:
+        return {"error": f"unknown protocol_id {protocol_id}"}
+    return corpus.read(p, start_page, end_page)

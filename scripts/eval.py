@@ -1,11 +1,13 @@
-"""Run eval/questions.jsonl through the agent and print answer + citations per question.
+"""Run eval/questions.jsonl through the agent (hospital UZG, all protocols) and write eval/results/<ts>.md.
 
-Each line: {"q": "...", "expect": "short note on what a correct answer contains (optional)"}.
-Output goes to eval/results/<timestamp>.md for the showcase. No document text is committed.
+Each line: {"id", "tier", "q", "expect", "include_subprotocols"?}. The report has answer, citation count, tool calls
+and latency per question. No patient data: the questions are the organisers' synthetic golden set.
 """
 
 import asyncio
 import json
+import re
+import sys
 import time
 from pathlib import Path
 
@@ -17,36 +19,45 @@ from app.agent import root_agent
 ROOT = Path(__file__).resolve().parent.parent
 QUESTIONS = ROOT / "eval" / "questions.jsonl"
 OUT = ROOT / "eval" / "results"
+CITE = re.compile(r"\[[^\]]+?, p\. ?\d+[^\]]*\]")
 
 
-async def ask(runner: InMemoryRunner, session_id: str, q: str) -> str:
-    text = []
-    async for event in runner.run_async(
-        user_id="eval", session_id=session_id,
-        new_message=types.Content(role="user", parts=[types.Part(text=q)]),
-    ):
-        if event.content and event.content.parts:
-            text.extend(p.text for p in event.content.parts if p.text)
-    return "".join(text)
+async def ask(runner: InMemoryRunner, session_id: str, q: str) -> tuple[str, list[str]]:
+    text, tools = [], []
+    async for ev in runner.run_async(user_id="eval", session_id=session_id,
+                                     new_message=types.Content(role="user", parts=[types.Part(text=q)])):
+        if ev.content and ev.content.parts:
+            for p in ev.content.parts:
+                if p.text:
+                    text.append(p.text)
+                if p.function_call:
+                    args = {k: (v if not isinstance(v, str) else v[:60]) for k, v in (p.function_call.args or {}).items()}
+                    tools.append(f"{p.function_call.name}({json.dumps(args, ensure_ascii=False)})")
+    return "".join(text), tools
 
 
-async def main() -> None:
+async def main(only: set[str]) -> None:
     rows = [json.loads(l) for l in QUESTIONS.read_text().splitlines() if l.strip()]
+    if only:
+        rows = [r for r in rows if r["id"] in only]
     runner = InMemoryRunner(agent=root_agent, app_name="eval")
     OUT.mkdir(exist_ok=True)
     out = OUT / f"{time.strftime('%Y%m%d-%H%M%S')}.md"
-    lines = []
-    for i, row in enumerate(rows, 1):
-        session = await runner.session_service.create_session(app_name="eval", user_id="eval")
+    lines = [f"# Eval {time.strftime('%Y-%m-%d %H:%M')} · model {root_agent.model}", ""]
+    for row in rows:
+        state = {"hospital": "UZG", "protocol_ids": [], "include_subprotocols": bool(row.get("include_subprotocols"))}
+        session = await runner.session_service.create_session(app_name="eval", user_id="eval", state=state)
         t0 = time.time()
-        answer = await ask(runner, session.id, row["q"])
-        cited = answer.count("p:")
-        lines += [f"## {i}. {row['q']}", "", answer, "",
-                  f"_{time.time() - t0:.1f}s · {cited} citation(s) · expect: {row.get('expect', '-')}_", ""]
-        print(f"{i:2d} {time.time() - t0:5.1f}s {cited} cites  {row['q'][:60]}")
+        answer, tools = await ask(runner, session.id, row["q"])
+        dt = time.time() - t0
+        cites = len(CITE.findall(answer))
+        print(f"{row['id']:4} {dt:5.1f}s  {cites:2} cites  {len(tools):2} tool calls  {row['q'][:60]}")
+        lines += [f"## {row['id']} ({row['tier']}) · {dt:.1f}s · {cites} citations · {len(tools)} tool calls",
+                  f"**Q:** {row['q']}", "", f"**Expect:** {row['expect']}", "", "**Tools:** " + "; ".join(tools), "",
+                  answer, "", "---", ""]
     out.write_text("\n".join(lines))
     print("wrote", out)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(set(sys.argv[1:])))

@@ -5,9 +5,11 @@ description = "Grounded protocol assistant for paediatric haemato-oncology (Solv
 requires-python = ">=3.12"
 dependencies = [
     "google-adk>=1.0",
-    "google-cloud-discoveryengine>=0.13",
-    "google-cloud-storage>=2.18",
+    "openpyxl>=3.1.5",
+    "pypdf>=6.21.4",
     "python-dotenv>=1.0",
+    "python-multipart>=0.0.9",
+    "uvicorn>=0.30",
 ]
 
 [tool.uv]
