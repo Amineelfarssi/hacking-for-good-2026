@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from google.adk.tools import ToolContext
 
-from app import corpus
+from app import corpus, pubmed
 
 MAX_READS_PER_TURN = 6  # a clinician is waiting: after this many page reads the model must answer with what it has
 
@@ -69,3 +69,18 @@ def read_pages(protocol_id: str, start_page: int, end_page: int, tool_context: T
         return {"error": f"read budget for this turn is used up ({MAX_READS_PER_TURN} reads). Answer now with the "
                          "pages you have read, cite them, and offer to continue if the clinician wants more."}
     return corpus.read(p, start_page, end_page)
+
+
+def search_pubmed(query: str, max_results: int = 5) -> dict:
+    """EXTERNAL evidence, outside the protocols: search PubMed (NCBI) for guidelines, consensus statements or
+    reviews on a topic that may collide with or complement the protocol in scope — e.g. febrile neutropenia,
+    infection prophylaxis, drug interactions, supportive care. Use ONLY for an in-scope paediatric
+    haemato-oncology question, after you have reported what the protocols say, and present the results in a
+    separate "External evidence" block with [PubMed <pmid>, <year>] tags. Never present external content as
+    protocol content. `query` should be specific: condition + "children" or "pediatric" + guideline/consensus."""
+    try:
+        results = pubmed.search(query, max_results=max_results)
+    except Exception as e:  # noqa: BLE001 — network problems must not break the answer
+        return {"error": f"PubMed unavailable: {type(e).__name__}", "results": []}
+    return {"query": query, "source": "PubMed (NCBI E-utilities)", "results": results,
+            "note": "External to the BSPHO protocols. Report separately; the protocol prevails for trial patients."}

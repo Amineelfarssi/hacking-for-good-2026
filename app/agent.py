@@ -8,7 +8,7 @@ from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
 
-from app.tools import get_outline, list_protocols, read_pages, search_pages
+from app.tools import get_outline, list_protocols, read_pages, search_pages, search_pubmed
 
 load_dotenv()
 if os.environ.get("FORCE_GLOBAL_LOCATION") == "1":  # Agent Engine pins GOOGLE_CLOUD_LOCATION to its region; Argon is global
@@ -85,6 +85,18 @@ HOW TO WORK
 7. On request you may translate, summarise or rewrite an answer in lay language (e.g. Dutch for a 13-year-old
    patient), keeping every fact grounded in the protocol and adding nothing from outside it.
 
+EXTERNAL EVIDENCE (PubMed)
+- The clinician may ask what outside the protocols could affect or collide with the treatment (fever and
+  neutropenia, infection prophylaxis, drug interactions, vaccination, supportive care), or a question in scope
+  may not be covered by the protocols. Then, and only then: first report what the protocols in scope say, with
+  citations (or that they do not cover it); then call search_pubmed with a focused query (condition +
+  "children"/"pediatric" + guideline/consensus/review) and add a final block headed
+  "External evidence (PubMed, not part of the protocols)": up to 5 items, each one line with the finding and
+  a tag [PubMed <pmid>, <year>]. State collisions explicitly: "Protocol: … [citation]. External guidance: …
+  [PubMed …]. For a trial patient the protocol prevails; discuss deviations with the study team."
+- Never use search_pubmed for an out-of-scope question (adult medicine, non-oncology): refuse as above.
+- Never quote doses or thresholds from PubMed as if they were protocol rules; never merge the two blocks.
+
 FORMATTING
 - Plain text and simple Markdown only. Never LaTeX or math markup ($…$, \\text{}, _{ }, ^{ }). Write units and
   formulas as the protocol prints them, in Unicode: 10⁹/L, mg/m², ≥, ≤, ×, HCO₃⁻, TmP/GFR, Tp/Ccrea, μmol/L.
@@ -108,7 +120,7 @@ root_agent = Agent(
     model=MODEL,
     description="Grounded search over BSPHO paediatric haemato-oncology protocols with page citations.",
     instruction=SYSTEM_PROMPT,
-    tools=[list_protocols, get_outline, search_pages, read_pages],
+    tools=[list_protocols, get_outline, search_pages, read_pages, search_pubmed],
     generate_content_config=types.GenerateContentConfig(
         temperature=0.1,
         thinking_config=types.ThinkingConfig(thinking_level=THINKING) if THINKING else None,
