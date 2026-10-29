@@ -11,6 +11,9 @@ from google.genai import types
 from app.tools import get_outline, list_protocols, read_pages, search_pages
 
 load_dotenv()
+if os.environ.get("FORCE_GLOBAL_LOCATION") == "1":  # Agent Engine pins GOOGLE_CLOUD_LOCATION to its region; Argon is global
+    os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
+    os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "TRUE")
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-4-argon")          # reasoning model for the agent
 FAST_MODEL = os.environ.get("GEMINI_FAST_MODEL", "gemini-3.8-flash")  # for quick, non-agentic work
