@@ -44,8 +44,9 @@ def page_image(protocol_id: str, page_no: int, q: str = ""):
         raise HTTPException(404, "unknown protocol")
     if page_no < 1 or page_no > max(1, len(p.pages)):
         raise HTTPException(404, "page out of range")
-    png, n = highlight.render(str(corpus.ROOT / p.file), page_no, q[:600])
-    return Response(png, media_type="image/png", headers={"X-Highlights": str(n), "Cache-Control": "public, max-age=3600"})
+    png, n, used, method = highlight.render(str(corpus.ROOT / p.file), page_no, q[:600])
+    return Response(png, media_type="image/png", headers={
+        "X-Highlights": str(n), "X-Page": str(used), "X-Match": method, "Cache-Control": "public, max-age=3600"})
 
 
 @api.post("/admin/upload")
