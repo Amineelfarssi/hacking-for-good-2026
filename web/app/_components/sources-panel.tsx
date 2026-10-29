@@ -100,7 +100,7 @@ export function SourcesPanel({
         </div>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1">
+      <ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:!block">
         <ul className="px-2 pb-2">
           {masters.map((p) => (
             <ProtocolRow key={p.id} p={p} checked={selected.has(p.id)} onCheck={(on) => toggle(p.id, on)} onOpen={() => onOpenProtocol(p)} />
@@ -142,7 +142,7 @@ function ProtocolRow({ p, checked, onCheck, onOpen }: { p: Protocol; checked: bo
     <li className="group flex items-start gap-2.5 rounded-lg px-2 py-1.5 hover:bg-sunken">
       <Checkbox id={inputId} checked={checked} onCheckedChange={(v) => onCheck(v === true)} className="mt-0.5" />
       <label htmlFor={inputId} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm leading-5 text-ink">
-        <span className="truncate" title={p.full_title}>
+        <span className="min-w-0 truncate" title={p.full_title}>
           {p.short_title}
         </span>
         {p.version && (

@@ -11,12 +11,14 @@ import sys
 import time
 from pathlib import Path
 
-from google.adk.runners import InMemoryRunner
-from google.genai import types
-
-from app.agent import root_agent
-
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))  # so `uv run scripts/eval.py` finds the app package
+
+from google.adk.runners import InMemoryRunner  # noqa: E402
+from google.genai import types  # noqa: E402
+
+from app.agent import root_agent  # noqa: E402
+
 QUESTIONS = ROOT / "eval" / "questions.jsonl"
 OUT = ROOT / "eval" / "results"
 CITE = re.compile(r"\[[^\]]+?, p\. ?\d+[^\]]*\]")

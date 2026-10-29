@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { findProtocol } from "@/lib/protocols";
+import { findProtocol, localPdfPath } from "@/lib/protocols";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/pdf-url?id=<protocol id> → { url, short_title, version }.
- * A gs:// manifest row gets a V4 signed read URL (ADC); anything else serves /mock.pdf.
+ * A gs:// manifest row gets a V4 signed read URL (ADC); a row whose PDF is on disk (manifest `file`, or an
+ * admin upload) is served by /api/pdf; anything else serves /mock.pdf.
  */
 export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get("id") ?? "";
@@ -13,7 +14,9 @@ export async function GET(req: Request) {
   if (!protocol) return NextResponse.json({ error: "unknown protocol id" }, { status: 404 });
 
   let url = "/mock.pdf";
-  if (protocol.gcs_uri.startsWith("gs://")) {
+  if (await localPdfPath(protocol)) {
+    url = `/api/pdf?id=${encodeURIComponent(protocol.id)}`;
+  } else if (protocol.gcs_uri.startsWith("gs://")) {
     try {
       url = await signedUrl(protocol.gcs_uri);
     } catch (err) {
