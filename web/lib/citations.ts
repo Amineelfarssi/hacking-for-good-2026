@@ -6,6 +6,18 @@ import type { Protocol } from "@/lib/protocols";
  * `[FaR-RMS v2.0c, p. 68, §10.1; p. 108, §18]`.
  */
 export const CITATION_RE = /\[([^\]]+?),\s*(p{1,2}\.\s*\d+[^\]]*)\]/g;
+/** `[PubMed 36689694, 2023]` or `[PubMed 36689694]`: external evidence, opens pubmed.ncbi.nlm.nih.gov, never the viewer. */
+export const PUBMED_RE = /\[PubMed\s+(\d{5,9})(?:,\s*(\d{4}))?\]/g;
+
+export type PubMedRef = { pmid: string; year?: string };
+
+export function pubmedUrl(pmid: string): string {
+  return `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
+}
+
+export function pubmedLabel(ref: PubMedRef): string {
+  return `PubMed ${ref.pmid}${ref.year ? ` · ${ref.year}` : ""}`;
+}
 const SEGMENT_RE = /p{1,2}\.\s*(\d+)(?:\s*[–-]\s*(\d+))?(?:\s*,\s*§\s*([^;]+))?/g;
 
 export type Citation = {
@@ -26,6 +38,7 @@ export function stripMarkdown(md: string): string {
   return md
     .replace(/```[\s\S]*?```/g, " ")
     .replace(CITATION_RE, " ")
+    .replace(PUBMED_RE, " ")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/^\s{0,3}#{1,6}\s+/gm, "")
     .replace(/^\s*(?:[-*+]|\d+[.)])\s+/gm, "")
@@ -74,15 +87,16 @@ export function citationLabel(c: Citation): string {
 }
 
 /**
- * Replace each citation with markdown links `[label](cite:N)`, one per cited page; the renderer turns them
- * into chips. N indexes the returned citations array.
+ * Replace each citation with markdown links `[label](cite:N)`, one per cited page, and each PubMed tag with
+ * `[label](pubmed:PMID:YEAR)`; the renderer turns them into chips. N indexes the returned citations array.
  */
 export function linkifyCitations(text: string): { markdown: string; citations: Citation[] } {
   const citations: Citation[] = [];
-  const markdown = text.replace(CITATION_RE, (raw, doc: string, tail: string, offset: number) => {
+  const withPubmed = text.replace(PUBMED_RE, (_raw, pmid: string, year?: string) => `[${pubmedLabel({ pmid, year })}](pubmed:${pmid}:${year ?? ""})`);
+  const markdown = withPubmed.replace(CITATION_RE, (raw, doc: string, tail: string, offset: number) => {
     const segs = parseSegments(raw, doc.trim(), tail);
     if (segs.length === 0) return raw;
-    const context = sentenceBefore(text, offset);
+    const context = sentenceBefore(withPubmed, offset);
     return segs
       .map((c) => {
         const i = citations.push({ ...c, context }) - 1;
