@@ -25,7 +25,7 @@ flowchart LR
     subgraph GCP["Google Cloud · europe-west1"]
         WEB["Cloud Run · web<br/>Next.js 16 (standalone)"]
         API["Cloud Run · api<br/>FastAPI + ADK agent API"]
-        BKT[("Cloud Storage<br/>corpus bucket: manifest, page text, PDFs")]
+        BKT[("Cloud Storage<br/>corpus bucket: manifest, page text, PDFs, uploads")]
         AE["Vertex AI Agent Engine<br/>same agent as a managed runtime"]
         AR[("Artifact Registry<br/>api:v1 · web:v1")]
         CB["Cloud Build"]
@@ -33,19 +33,26 @@ flowchart LR
     end
     subgraph Models["Vertex AI · global endpoint"]
         ARGON["Gemini 4 Argon<br/>agent reasoning, thinking=low"]
-        FLASH["Gemini 3.8 Flash<br/>section summaries · judge"]
+        FLASH["Gemini 3.8 Flash<br/>web-evidence sub-agent · section summaries · judge"]
+    end
+    subgraph External["External evidence (public APIs, keyless)"]
+        PM["PubMed (NCBI E-utilities)"]
+        GS["Google Search grounding"]
+        FDA["openFDA drug labels"]
+        GEN["NCBI Gene · CPIC · ClinVar"]
     end
     C -->|HTTPS| WEB
-    A -->|Admin tab: upload PDF| WEB
+    A -->|Admin tab / paperclip upload| WEB
     WEB -->|"/api/* proxies (SSE)"| API
-    API -->|copy at start · write-back on upload| BKT
+    API -->|copy at start · uploads| BKT
     API -->|generateContent| ARGON
-    AE -->|reads manifest + page text| BKT
+    API --> PM & FDA & GEN
+    API -->|AgentTool| FLASH -->|grounding| GS
+    AE -->|manifest + page text| BKT
     AE --> ARGON
     CB -->|push| AR --> WEB
     AR --> API
     EV -.->|scores answers vs cited pages| FLASH
-    FLASH -.->|one-line summary per section| BKT
 ```
 
 ### Application view
@@ -53,36 +60,44 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph Browser["web/ · Next.js app"]
-        SRC["Sources panel<br/>hospital (Tier 1) · protocol tick-list (Tier 2) · deep search"]
-        CHAT["Chat<br/>lead + details · criteria & clarify cards · citation chips · thumbs"]
+        SRC["Sources panel (collapsible rail)<br/>hospital (Tier 1) · protocol tick-list (Tier 2) · deep search<br/>Uploaded documents group · Upload a document"]
+        CHAT["Chat<br/>lead + details · criteria & clarify cards · protocol chips (amber)<br/>external chips (slate: PubMed, Web, FDA, Gene, CPIC, ClinVar) · paperclip upload · thumbs"]
         VIEW["Source viewer<br/>page image with the cited passage highlighted"]
-        TRAIL["Trail + Decision flow<br/>live walk: protocol → sections → pages"]
+        TRAIL["Trail + Decision flow drawer<br/>live: scope? → enough to answer? → protocols → sections → pages → external evidence → answer"]
         ADM["Admin<br/>upload PDF · hospitals · instant extraction"]
     end
     subgraph Routes["web/app/api · thin proxies"]
-        R1["/api/chat (SSE, session state = selection)"]
+        R1["/api/chat (SSE: deltas, status, tool_call, tool_result)"]
         R2["/api/protocols"]
         R3["/api/page/{id}/{n}?q= · /api/pdf"]
         R4["/api/admin/upload · /api/feedback"]
     end
     subgraph Server["app/server.py · FastAPI on port 8000"]
-        ADK["ADK runtime<br/>/apps · /run_sse · sessions"]
-        AG["root_agent (app/agent.py)<br/>prompt: scope · clarify · cite · refuse"]
-        T1["list_protocols"]
-        T2["get_outline (+ summaries)"]
-        T3["search_pages (regex, grouped by section)"]
-        T4["read_pages (budget 6/turn)"]
+        ADK["ADK runtime<br/>/apps · /run_sse · sessions (state = selection)"]
+        AG["root_agent (app/agent.py)<br/>prompt: scope · clarify · plan · cite · external block · collisions · refuse"]
+        subgraph Nav["Protocol navigation tools"]
+            T1["list_protocols"]
+            T2["get_outline (+ section summaries)"]
+            T3["search_pages (regex, grouped by section)"]
+            T4["read_pages (budget 6/turn)"]
+        end
+        subgraph Ext["External evidence tools"]
+            E1["search_pubmed"]
+            E2["web_evidence (sub-agent, Google Search)"]
+            E3["get_drug_label (openFDA)"]
+            E4["get_gene_info · get_pharmacogenomics · search_clinvar"]
+        end
         HL["highlight.py<br/>exact → fuzzy → neighbour page"]
-        CP["corpus.py<br/>manifest.jsonl + pages/*.json"]
+        CP["corpus.py<br/>manifest.jsonl + pages/*.json (+ gs:// loader)"]
     end
-    SRC --> R1 & R2
-    CHAT --> R1
+    SRC --> R1 & R2 & R4
+    CHAT --> R1 & R4
     VIEW --> R3
     TRAIL --> R1
     ADM --> R4
     R1 --> ADK --> AG
-    AG --> T1 & T2 & T3 & T4
-    T1 & T2 & T3 & T4 --> CP
+    AG --> Nav --> CP
+    AG --> Ext
     R2 --> CP
     R3 --> HL --> CP
     R4 --> CP
@@ -93,9 +108,9 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    Q["Clinician question<br/>+ session state: hospital, selected protocols, deep search"]
+    Q["Clinician question<br/>+ session state: hospital, selected protocols, uploads, deep search"]
     S{In scope?<br/>paediatric haemato-oncology}
-    REF["Refuse<br/>'I cannot answer…' · no medical content"]
+    REF["Refuse<br/>'I cannot answer…' · no medical content · no tools"]
     CL{Enough to answer?<br/>patient described and protocol / risk group / age missing?}
     CARD["Clarify card<br/>2–4 options · stop"]
     LP["list_protocols → scope"]
@@ -104,22 +119,48 @@ flowchart TD
     RP["read_pages per section<br/>(≤ 6 reads, each section once)"]
     DD{Sub-protocols relevant<br/>and not in scope?}
     OFFER["Offer the deep dive;<br/>on yes: read the guideline in full"]
-    ANS["Answer<br/>direct sentence → criteria card / bullets<br/>every fact: [Short title vX, p. N, §section]"]
-    UI["UI: chips → highlighted page · trail · decision flow · feedback"]
-    EVAL["Eval: rules + Gemini judge (SCORECARD) ·<br/>Vertex AI evaluation (QA quality, grounding, completeness)"]
+    PB["Protocol block<br/>direct sentence → criteria card / bullets<br/>every fact: [Short title vX, p. N, §section]"]
+    EX{Complication, co-medication,<br/>infection, genetics, or gap in the protocol?}
+    EXT["External evidence (eager)<br/>PubMed · web guidelines · FDA label · Gene / CPIC / ClinVar<br/>tags [PubMed …] [Web …] [FDA label …] [CPIC …]"]
+    COL["Possible collisions<br/>Protocol: … [page] vs external: … [tag]<br/>the protocol prevails for a trial patient"]
+    ANS["Answer"]
+    UI["UI: chips → highlighted page · external chips → source · trail · decision flow · feedback"]
+    EVAL["Eval: rules + Gemini judge (SCORECARD) · Vertex AI evaluation (QA quality, grounding, completeness) · platform checks"]
     Q --> S
     S -- no --> REF
     S -- yes --> CL
     CL -- missing fact --> CARD --> Q
     CL -- yes --> LP --> SP --> PLAN --> RP --> DD
-    DD -- yes --> OFFER --> ANS
-    DD -- no --> ANS
+    DD -- yes --> OFFER --> PB
+    DD -- no --> PB
+    PB --> EX
+    EX -- yes --> EXT --> COL --> ANS
+    EX -- no --> ANS
     ANS --> UI
     ANS -.-> EVAL
 ```
 
 No vector index: retrieval is the agent's own navigation (outline with summaries, section-grouped search, page reads),
-so every citation is the PDF page the text came from, and the UI can show the walk live.
+so every citation is the PDF page the text came from, and the UI shows the walk live. External evidence is a second,
+clearly labelled layer that never becomes protocol content.
+
+## Tools
+
+| Group | Tool | Source | Tag in answers |
+|---|---|---|---|
+| Protocol navigation | `list_protocols` | manifest (hospital mapping, selection, uploads) | — |
+| | `get_outline` | bookmarks / TOC / layout outline + section summaries | — |
+| | `search_pages` | regex with synonyms, grouped by section | — |
+| | `read_pages` | page text, budget 6 reads per turn | `[Short title vX, p. N, §section]` |
+| External evidence | `search_pubmed` | NCBI PubMed E-utilities | `[PubMed pmid, year]` |
+| | `web_evidence` | Google Search grounding (Gemini 3.8 Flash sub-agent) | `[Web: domain, year]` |
+| | `get_drug_label` | openFDA drug label | `[FDA label: drug]` |
+| | `get_gene_info` | NCBI Gene | `[NCBI Gene: SYMBOL]` |
+| | `get_pharmacogenomics` | CPIC gene–drug pairs | `[CPIC: GENE–drug]` |
+| | `search_clinvar` | ClinVar | `[ClinVar: id]` |
+
+External tools run only for in-scope questions, after the protocol block, and their findings stay in a separate
+"External evidence (not part of the protocols)" block followed by "Possible collisions".
 
 ## Run
 
