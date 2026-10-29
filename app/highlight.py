@@ -14,7 +14,7 @@ import fitz  # PyMuPDF
 
 STOP = set("the a an of and or to in on for with by as is are be at from that this these those which will must should "
            "may can not no any all per if than then its it their there when where who whom whose into out over under".split())
-MIN_FUZZY = 0.34  # share of the quote's content words that a page window must contain
+MIN_FUZZY = 0.30  # share of the quote's content words that a page window must contain
 MIN_HITS = 3
 
 

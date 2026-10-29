@@ -6,12 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ViewerTarget } from "./types";
 
-type PageImage = { url: string; highlights: number } | { error: string };
+type Match = "exact" | "fuzzy" | "none";
+type PageImage = { url: string; highlights: number; page: number; match: Match } | { error: string };
+
+const MATCH_LABEL: Record<Match, string> = {
+  exact: "passage highlighted",
+  fuzzy: "closest passage highlighted",
+  none: "page only",
+};
 
 /**
  * The cited page as an image with the quoted passage highlighted, from /api/page/<id>/<page>?q=.
- * Prev/next move within the protocol; "Open PDF" is the plain PDF at that page. When the page image is not
- * available (server down) the PDF iframe takes its place.
+ * The server may render a neighbouring page when the passage sits there (X-Page); the header, Prev/Next and the
+ * PDF link then follow the rendered page. Prev/next move within the protocol; "Open PDF" is the plain PDF at that
+ * page. When the page image is not available (server down) the PDF iframe takes its place.
  */
 export function SourceViewer({ target }: { target: ViewerTarget | null }) {
   if (!target) {
@@ -36,6 +44,8 @@ function ViewerBody({ target }: { target: ViewerTarget }) {
   const q = page === target.page && target.query ? `?q=${encodeURIComponent(target.query)}` : "";
   const requestKey = `/api/page/${encodeURIComponent(target.protocol.id)}/${page}${q}`;
   const image = loaded?.key === requestKey ? loaded.data : null;
+  // The page on screen: what the server rendered, else what was asked for.
+  const shownPage = image && "page" in image ? image.page : page;
 
   useEffect(() => {
     let alive = true;
@@ -45,7 +55,19 @@ function ViewerBody({ target }: { target: ViewerTarget }) {
         if (!res.ok) throw new Error(String(res.status));
         const blob = await res.blob();
         objectUrl = URL.createObjectURL(blob);
-        if (alive) setLoaded({ key: requestKey, data: { url: objectUrl, highlights: Number(res.headers.get("x-highlights") ?? 0) } });
+        const rendered = Number(res.headers.get("x-page"));
+        const match = res.headers.get("x-match");
+        const highlights = Number(res.headers.get("x-highlights") ?? 0);
+        if (alive)
+          setLoaded({
+            key: requestKey,
+            data: {
+              url: objectUrl,
+              highlights,
+              page: Number.isInteger(rendered) && rendered > 0 ? rendered : page,
+              match: match === "exact" || match === "fuzzy" || match === "none" ? match : highlights > 0 ? "exact" : "none",
+            },
+          });
       })
       .catch((err: Error) => {
         if (alive) setLoaded({ key: requestKey, data: { error: err.message } });
@@ -54,12 +76,13 @@ function ViewerBody({ target }: { target: ViewerTarget }) {
       alive = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [requestKey]);
+  }, [requestKey, page]);
 
-  const pdfHref = `${target.url}#page=${page}`;
+  const pdfHref = `${target.url}#page=${shownPage}`;
   const last = target.protocol.pages;
   const title = `${target.protocol.short_title}${target.protocol.version ? ` v${target.protocol.version}` : ""}`;
-  const highlighted = image && "highlights" in image ? image.highlights > 0 : null;
+  const match = image && "match" in image ? image.match : null;
+  const movedPage = match !== null && shownPage !== target.page && page === target.page;
 
   return (
     <div className="flex h-full flex-col">
@@ -68,9 +91,9 @@ function ViewerBody({ target }: { target: ViewerTarget }) {
         subtitle={target.protocol.full_title}
         action={
           <div className="flex items-center gap-1.5">
-            {highlighted !== null && (
+            {match !== null && (
               <Badge variant="secondary" className="hidden whitespace-nowrap px-1.5 py-0 text-[11px] font-medium text-ink-soft sm:inline-flex">
-                {highlighted ? "passage highlighted" : "page only"}
+                {MATCH_LABEL[match]}
               </Badge>
             )}
             <Button variant="outline" size="sm" className="h-8 rounded-md bg-white" asChild>
@@ -83,16 +106,21 @@ function ViewerBody({ target }: { target: ViewerTarget }) {
         }
       />
       <div className="flex shrink-0 items-center justify-between border-b border-line px-3 py-1.5">
-        <Button variant="ghost" size="sm" className="h-8 px-2 text-ink-soft" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+        <Button variant="ghost" size="sm" className="h-8 px-2 text-ink-soft" disabled={shownPage <= 1} onClick={() => setPage(Math.max(1, shownPage - 1))}>
           <ChevronLeft />
           Prev
         </Button>
         <span className="text-xs text-ink-soft">
-          p. {page}
+          p. {shownPage}
           {last ? ` / ${last}` : ""}
-          {page !== target.page && <span className="text-ink-faint"> · cited p. {target.page}</span>}
+          {movedPage && (
+            <span className="text-ink-faint">
+              {" "}· cited p. {target.page}, passage found on p. {shownPage}
+            </span>
+          )}
+          {!movedPage && shownPage !== target.page && <span className="text-ink-faint"> · cited p. {target.page}</span>}
         </span>
-        <Button variant="ghost" size="sm" className="h-8 px-2 text-ink-soft" disabled={!!last && page >= last} onClick={() => setPage((p) => (last ? Math.min(last, p + 1) : p + 1))}>
+        <Button variant="ghost" size="sm" className="h-8 px-2 text-ink-soft" disabled={!!last && shownPage >= last} onClick={() => setPage(last ? Math.min(last, shownPage + 1) : shownPage + 1)}>
           Next
           <ChevronRight />
         </Button>
@@ -105,10 +133,10 @@ function ViewerBody({ target }: { target: ViewerTarget }) {
         )}
         {image && "url" in image && (
           // eslint-disable-next-line @next/next/no-img-element -- a blob URL rendered at column width
-          <img src={image.url} alt={`${target.protocol.short_title}, page ${page}`} className="block w-full bg-white" />
+          <img src={image.url} alt={`${target.protocol.short_title}, page ${shownPage}`} className="block w-full bg-white" />
         )}
         {image && "error" in image && (
-          <iframe key={pdfHref} src={pdfHref} title={`${target.protocol.short_title} page ${page}`} className="h-full w-full border-0" />
+          <iframe key={pdfHref} src={pdfHref} title={`${target.protocol.short_title} page ${shownPage}`} className="h-full w-full border-0" />
         )}
       </div>
     </div>

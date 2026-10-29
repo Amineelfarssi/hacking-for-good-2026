@@ -5,7 +5,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/page/<id>/<page>?q=<cited sentence> → PNG of that protocol page with the passage highlighted, from
- * GET {ADK_URL}/page/<id>/<page>?q=. The X-Highlights header (number of boxes found) is passed through.
+ * GET {ADK_URL}/page/<id>/<page>?q=. Headers passed through: X-Page (the page actually rendered, which may be a
+ * neighbour of the requested one), X-Match (exact | fuzzy | none) and X-Highlights (number of boxes found).
  */
 export async function GET(req: Request, ctx: { params: Promise<{ id: string; page: string }> }) {
   const { id, page } = await ctx.params;
@@ -20,6 +21,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; pag
     "Content-Type": res.headers.get("content-type") ?? "image/png",
     "Cache-Control": "private, max-age=600",
     "X-Highlights": res.headers.get("x-highlights") ?? "0",
+    "X-Page": res.headers.get("x-page") ?? String(pageNo),
+    "X-Match": res.headers.get("x-match") ?? "none",
   });
   return new Response(res.body, { headers });
 }
