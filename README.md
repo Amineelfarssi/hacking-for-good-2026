@@ -54,7 +54,19 @@ served from the global Vertex AI endpoint in the lab project; `gemini-3.5-flash`
 `gemini-2.5-flash` also answer there. No vector index: retrieval is the agent's own list / outline / search / read
 loop over the extracted page text, so every citation is the PDF page the text came from.
 
-## Golden eval (first run, 29 Oct 11:50, Argon)
+## Golden eval (29 Oct 2026, Gemini 4 Argon, hospital UZG, all protocols)
 
-Q3 FaR-RMS staging: correct, 27 page citations. Q4 150,000 WBC: asks AML or ALL first. Q5 adult hypertension:
-refuses with no medical content. See `eval/results/`.
+| Q | Tier | Result | Time |
+|---|---|---|---|
+| Q1 dinutuximab start criteria | must | HR-NBL2 and BEACON2 answered per protocol, criteria cards, 28 citations | 54 s |
+| Q2 neuroblastoma staging, 3 y, MYCN not amplified | must | INRG staging, stage M rule, work-up list, 23 citations | 77 s |
+| Q3 FaR-RMS staging investigations | must | Histology + fusion status, imaging, lung nodule rule, 11–27 citations | 74 s |
+| Q4 150,000 WBC | must | Clarify card: ALL / AML / infant ALL before answering | 9 s |
+| Q5 adult hypertension | must | Refused, no medical content | 3 s |
+| Q6 child asthma | must | Refused, no medical content | 3 s |
+| Q7 ALLTogether1 stroke-like event | should | Master protocol sections, offers the sub-protocol deep dive | 51 s |
+| Q7b deep dive accepted | should | Thrombosis and glucarpidase guidelines, criteria card, 9 citations | 52 s |
+| Q9 Dutch patient text for FaR-RMS | could | Lay Dutch, phases and timepoints, 22 citations | 57 s |
+
+Reports with full answers and tool traces: `eval/results/`. Run: `PYTHONUNBUFFERED=1 uv run scripts/eval.py [Q1 Q4 …]`,
+one run at a time (the lab project's tokens-per-minute quota is small).
