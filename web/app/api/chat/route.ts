@@ -31,8 +31,8 @@ const SSE_HEADERS = {
 /**
  * POST /api/chat { message, session_id?, hospital, protocol_ids, include_subprotocols, history? }
  * → SSE stream of UiEvent. Proxies the ADK api_server (ADK_URL, default http://localhost:8000):
- * creates or reuses the session with the selection in its state, then forwards /run_sse. The browser starts a
- * new session whenever the selection changes, so the state set at creation is the one the agent reads.
+ * creates or reuses the session with the selection as its state (flat object), then forwards /run_sse with the
+ * same selection as state_delta. The browser starts a new session whenever the selection changes.
  * When the ADK server is unreachable it streams a generic mock answer so the UI can be developed.
  */
 export async function POST(req: Request) {
@@ -91,7 +91,8 @@ async function openAdkStream(
     const created = await fetch(sessionUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state }),
+      // ADK takes the state object itself as the body, not `{ state }`.
+      body: JSON.stringify(state),
       signal,
     });
     // 400/409: the session already exists, keep using it.
@@ -108,6 +109,8 @@ async function openAdkStream(
         session_id: sessionId,
         new_message: { role: "user", parts: [{ text: message }] },
         streaming: true,
+        // The same flat selection, so a run on an existing session sees the latest choice too.
+        state_delta: state,
       }),
       signal,
     });
