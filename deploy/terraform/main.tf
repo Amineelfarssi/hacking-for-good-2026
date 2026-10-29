@@ -77,6 +77,7 @@ resource "google_storage_bucket_iam_member" "api_corpus" {
 # ---------------------------------------------------------------- Cloud Run: api
 
 resource "google_cloud_run_v2_service" "api" {
+  deletion_protection = false # hackathon: let terraform replace a failed revision
   name     = "${var.name}-api"
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
@@ -167,6 +168,7 @@ resource "google_cloud_run_v2_service" "api" {
 # ---------------------------------------------------------------- Cloud Run: web
 
 resource "google_cloud_run_v2_service" "web" {
+  deletion_protection = false
   name     = "${var.name}-web"
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
