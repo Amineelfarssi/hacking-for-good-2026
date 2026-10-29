@@ -11,10 +11,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from google.adk.cli.fast_api import get_fast_api_app
 
-from app import corpus
+from app import corpus, highlight
 
 load_dotenv()
 REPO = Path(__file__).resolve().parent.parent
@@ -34,6 +34,18 @@ def pdf(protocol_id: str):
     if not p or not p.file:
         raise HTTPException(404, "unknown protocol")
     return FileResponse(corpus.ROOT / p.file, media_type="application/pdf", filename=Path(p.file).name)
+
+
+@api.get("/page/{protocol_id}/{page_no}")
+def page_image(protocol_id: str, page_no: int, q: str = ""):
+    """PNG of one page, with the passage `q` (the cited sentence) highlighted when it is found on the page."""
+    p = corpus.get(protocol_id)
+    if not p or not p.file:
+        raise HTTPException(404, "unknown protocol")
+    if page_no < 1 or page_no > max(1, len(p.pages)):
+        raise HTTPException(404, "page out of range")
+    png, n = highlight.render(str(corpus.ROOT / p.file), page_no, q[:600])
+    return Response(png, media_type="image/png", headers={"X-Highlights": str(n), "Cache-Control": "public, max-age=3600"})
 
 
 @api.post("/admin/upload")
