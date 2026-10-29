@@ -259,7 +259,15 @@ Hyperleukocytosis in AML is defined as a white blood cell count above 100 × 10�
 
 The same chapter sets out when leukapheresis or exchange transfusion is considered and how tumour lysis prophylaxis is adjusted [CHIP-AML22 v2.2, p. 175, §Supportive care].
 
-If the diagnosis is ALL rather than AML, the relevant guidance lives in a different protocol: tell me which one applies and I will search it.`;
+\`\`\`card
+{"type":"criteria","title":"Hyperleukocytosis: thresholds in the protocol (mock)","rows":[{"item":"WBC threshold","value":"> 100 × 10⁹/L","cite":"[CHIP-AML22 v2.2, p. 91, §Hyperleukocytosis]"},{"item":"Cytoreduction","value":"Before the first full course","cite":"[CHIP-AML22 v2.2, p. 91, §Hyperleukocytosis]"},{"item":"Tumour lysis prophylaxis","value":"Adjusted per the supportive-care chapter","cite":"[CHIP-AML22 v2.2, p. 175, §Supportive care]"}]}
+\`\`\`
+
+If the diagnosis is ALL rather than AML, the relevant guidance lives in a different protocol.
+
+\`\`\`card
+{"type":"clarify","question":"Which diagnosis applies?","options":[{"label":"AML — CHIP-AML22","send":"AML, treated on CHIP-AML22"},{"label":"ALL — ALLTogether1","send":"ALL, treated on ALLTogether1"}]}
+\`\`\``;
 
 async function streamMockAnswer(send: (e: UiEvent) => void, signal: AbortSignal) {
   // Two mock tool rounds so the trail can be seen offline: one search, one read.

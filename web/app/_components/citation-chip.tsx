@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { citationLabel, type Citation } from "@/lib/citations";
 
-/** `[Doc vX, p. N, §Section]` rendered as a clickable chip: rounded-lg, rose outline. */
+/** `[Doc vX, p. N, §Section]` as a quiet chip: hairline border, rose only on hover. */
 export function CitationChip({ citation, onClick, className }: { citation: Citation; onClick: () => void; className?: string }) {
   return (
     <button
@@ -11,15 +11,12 @@ export function CitationChip({ citation, onClick, className }: { citation: Citat
       onClick={onClick}
       title={citationLabel(citation)}
       className={cn(
-        "mx-0.5 inline-flex max-w-full items-baseline gap-1 rounded-lg border border-primary/60 bg-white px-1.5 py-0 align-baseline text-[12px] font-medium leading-5 text-ink transition-colors hover:bg-primary/10",
+        "mx-0.5 inline-flex max-w-full items-baseline gap-1 rounded-lg border border-line bg-white px-1.5 align-baseline text-xs leading-5 text-ink-soft transition-colors hover:border-primary hover:text-ink",
         className,
       )}
     >
       <span className="truncate">{citation.doc}</span>
-      <span className="shrink-0 text-ink-soft">
-        {citation.pageEnd ? `pp. ${citation.page}–${citation.pageEnd}` : `p. ${citation.page}`}
-      </span>
-      {citation.section && <span className="hidden shrink-0 text-ink-faint sm:inline">§{citation.section}</span>}
+      <span className="shrink-0">{citation.pageEnd ? `pp. ${citation.page}–${citation.pageEnd}` : `p. ${citation.page}`}</span>
     </button>
   );
 }

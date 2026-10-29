@@ -63,8 +63,9 @@
     --input: var(--line);
     --ring: 0 91% 71%;
     --radius: 0.625rem;
-    --fs-sm: 0.84375rem;
-    --fs-xs: 0.78125rem;
+    /* Type scale: 13 / 14 / 16 only (text-xs / text-sm / text-base). */
+    --fs-sm: 0.875rem;
+    --fs-xs: 0.8125rem;
   }
 
   html:has([data-app-theme="calm"]) body {
@@ -95,22 +96,22 @@
 
 @layer components {
   .page-title {
-    @apply text-[22px] font-semibold leading-7 text-ink;
-    letter-spacing: -0.022em;
+    @apply text-base font-semibold leading-6 text-ink;
+    letter-spacing: -0.015em;
   }
   .page-subtitle {
-    @apply mt-1 text-[13.5px] font-normal leading-5 text-ink-soft;
+    @apply text-xs font-normal leading-5 text-ink-soft;
   }
   .surface {
     @apply rounded-2xl border border-line bg-canvas;
   }
   .section-title {
-    @apply mb-3 text-[15px] font-medium leading-6 text-ink;
+    @apply mb-2 text-sm font-medium leading-6 text-ink;
   }
 
   /* A streamed answer: markdown rendered in the calm palette. */
   .answer-md {
-    @apply text-[14px] leading-6 text-ink;
+    @apply text-sm leading-6 text-ink;
   }
   .answer-md p { @apply my-2; }
   .answer-md p:first-child { @apply mt-0; }
@@ -118,13 +119,18 @@
   .answer-md ul { @apply my-2 list-disc pl-5; }
   .answer-md ol { @apply my-2 list-decimal pl-5; }
   .answer-md li { @apply my-0.5; }
-  .answer-md h1, .answer-md h2, .answer-md h3 { @apply mb-1 mt-3 text-[14px] font-semibold; }
+  .answer-md h1, .answer-md h2, .answer-md h3 { @apply mb-1 mt-3 text-sm font-semibold; }
   .answer-md strong { @apply font-semibold; }
-  .answer-md code { @apply rounded-md bg-sunken px-1 py-0.5 text-[12.5px]; }
-  .answer-md table { @apply my-2 w-full border-collapse text-[13px]; }
+  .answer-md code { @apply rounded-md bg-sunken px-1 py-0.5 text-xs; }
+  .answer-md table { @apply my-2 w-full border-collapse text-xs; }
   .answer-md th, .answer-md td { @apply border border-line px-2 py-1 text-left align-top; }
   .answer-md th { @apply bg-sunken font-medium; }
   .answer-md blockquote { @apply my-2 border-l-2 border-line pl-3 text-ink-soft; }
   .answer-md .katex, .answer-md-inline .katex { font-size: 1em; }
   .answer-md-inline a { @apply text-primary underline underline-offset-2; }
+}
+
+/* A collapsed side panel: a 48px rail with the toggle on top. */
+.rail {
+  @apply flex h-full w-12 flex-col items-center gap-2 py-2;
 }

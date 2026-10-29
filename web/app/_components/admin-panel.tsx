@@ -61,10 +61,10 @@ export function AdminPanel({ hospitals, protocols, onUploaded }: Props) {
   const hospitalList = hospitals.length ? hospitals : [];
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 px-5 py-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+    <div className="mx-auto grid max-w-5xl gap-4 px-4 py-4 lg:grid-cols-[360px_minmax(0,1fr)]">
       <Card className="rounded-2xl border-line shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-[15px] font-medium">Add a protocol or amendment</CardTitle>
+          <CardTitle className="text-sm font-medium">Add a protocol or amendment</CardTitle>
           <CardDescription className="text-xs text-ink-faint">
             The PDF is stored, its pages are extracted and it becomes searchable at once for the hospitals you tick.
           </CardDescription>
@@ -99,7 +99,7 @@ export function AdminPanel({ hospitals, protocols, onUploaded }: Props) {
                 ))}
               </div>
             </fieldset>
-            <Button type="submit" className="h-9 rounded-[8px]" disabled={busy || picked.size === 0}>
+            <Button type="submit" className="h-9 rounded-[10px]" disabled={busy || picked.size === 0}>
               {busy ? <Loader2 className="animate-spin" /> : <Upload />}
               Upload and index
             </Button>
@@ -121,12 +121,12 @@ export function AdminPanel({ hospitals, protocols, onUploaded }: Props) {
                   {p.full_title}
                 </p>
               </div>
-              <Badge variant="outline" className="border-line text-[11px] font-medium text-ink-soft">
+              <Badge variant="outline" className="border-line text-xs font-normal text-ink-soft">
                 {p.kind === "sub" ? "sub-protocol" : "master"}
               </Badge>
               <div className="flex flex-wrap gap-1">
                 {p.hospitals.map((h) => (
-                  <Badge key={h} variant="secondary" className="px-1.5 py-0 text-[11px] font-medium text-ink-soft">
+                  <Badge key={h} variant="secondary" className="px-1.5 py-0 text-xs font-normal text-ink-soft">
                     {h}
                   </Badge>
                 ))}
@@ -147,7 +147,7 @@ function Field({ label, htmlFor, hint, children }: { label: string; htmlFor: str
         {label}
       </label>
       {children}
-      {hint && <p className="text-[11px] text-ink-faint">{hint}</p>}
+      {hint && <p className="text-xs text-ink-faint">{hint}</p>}
     </div>
   );
 }
