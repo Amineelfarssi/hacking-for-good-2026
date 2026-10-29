@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ChevronDown, FileText, PanelLeftClose, PanelLeftOpen, Search, Upload } from "lucide-react";
-import { UploadDocumentDialog } from "./upload-document-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,7 +20,8 @@ type Props = {
   subs: Protocol[];
   /** Clinician-uploaded institutional documents at this hospital. */
   locals: Protocol[];
-  onUploaded: () => Promise<unknown>;
+  /** Opens the shared "Upload a document" dialog (also reachable from the composer's paperclip). */
+  onRequestUpload: () => void;
   totalMasters: number;
   selected: Set<string>;
   onSelectedChange: (s: Set<string>) => void;
@@ -59,7 +59,7 @@ function OpenPanel({
   masters,
   subs,
   locals,
-  onUploaded,
+  onRequestUpload,
   totalMasters,
   selected,
   onSelectedChange,
@@ -72,7 +72,6 @@ function OpenPanel({
   const [mastersOpen, setMastersOpen] = useState(true);
   const [subsOpen, setSubsOpen] = useState(true);
   const [localsOpen, setLocalsOpen] = useState(true);
-  const [uploadOpen, setUploadOpen] = useState(false);
 
   const q = filter.trim().toLowerCase();
   const match = (p: Protocol) => !q || p.short_title.toLowerCase().includes(q) || p.full_title.toLowerCase().includes(q);
@@ -194,14 +193,13 @@ function OpenPanel({
       <div className="shrink-0 border-t border-line p-2">
         <button
           type="button"
-          onClick={() => setUploadOpen(true)}
+          onClick={onRequestUpload}
           className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-xs text-ink-soft hover:bg-sunken hover:text-ink"
         >
           <Upload className="size-3.5" />
           Upload a document
         </button>
       </div>
-      <UploadDocumentDialog open={uploadOpen} onOpenChange={setUploadOpen} hospital={hospital} onUploaded={onUploaded} />
     </div>
   );
 }

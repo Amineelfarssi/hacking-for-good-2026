@@ -1,6 +1,6 @@
 import { parseCitations } from "@/lib/citations";
 import { splitSegments } from "@/lib/cards";
-import type { TrailEvent } from "@/lib/trail";
+import { EXTERNAL_TOOLS, type TrailEvent } from "@/lib/trail";
 
 /** What the question was asked against; recorded on the message when it is sent. */
 export type AnswerScope = { hospital: string; protocolCount: number; includeSubs: boolean };
@@ -54,10 +54,11 @@ export function buildFlow(input: FlowInput): FlowNode[] {
   let sectionCount = 0;
   const reads = new Map<string, { title: string; ranges: string[]; pages: number }>();
   let listed: number | undefined;
-  let pubmed: { n?: number } | undefined;
+  const external: string[] = [];
+  let externalPending = 0;
   for (const e of events) {
     if (e.type === "tool_call") {
-      if (e.name === "search_pubmed") pubmed = pubmed ?? {};
+      if (EXTERNAL_TOOLS[e.name]) externalPending += 1;
       const ids = e.args.protocol_ids;
       if (Array.isArray(ids)) ids.forEach((id) => searched.add(String(id)));
       if (typeof e.args.protocol_id === "string") searched.add(e.args.protocol_id);
@@ -75,7 +76,11 @@ export function buildFlow(input: FlowInput): FlowNode[] {
     } else {
       const s = e.summary;
       if (e.name === "list_protocols" && typeof s.n === "number") listed = s.n;
-      if (e.name === "search_pubmed") pubmed = { n: typeof s.n === "number" ? s.n : 0 };
+      const ext = EXTERNAL_TOOLS[e.name];
+      if (ext) {
+        external.push(e.name === "web_evidence" && typeof s.request === "string" ? `Web guidelines: ${s.request}` : ext.done(s));
+        externalPending -= 1;
+      }
       if (e.name === "search_pages" && Array.isArray(s.sections)) {
         for (const sec of s.sections as Record<string, unknown>[]) {
           sectionCount += 1;
@@ -169,11 +174,13 @@ export function buildFlow(input: FlowInput): FlowNode[] {
     status: deepTaken ? "done" : deepOffered ? "done" : done ? "skipped" : "pending",
     detail: deepTaken ? "Sub-protocols were in scope" : deepOffered ? "The answer points to the sub-protocols" : "Not needed",
   });
+  const usedExternal = external.length > 0 || externalPending > 0;
   nodes.push({
-    key: "pubmed",
+    key: "external",
     title: "External evidence consulted",
-    status: pubmed ? (pubmed.n !== undefined ? "done" : "active") : done ? "skipped" : "pending",
-    detail: pubmed ? `PubMed: ${pubmed.n ?? "…"} result${pubmed.n === 1 ? "" : "s"}` : "Optional: PubMed, outside the protocols",
+    status: usedExternal ? (externalPending > 0 ? "active" : "done") : done ? "skipped" : "pending",
+    detail: usedExternal ? `${external.length + externalPending} source${external.length + externalPending === 1 ? "" : "s"}, outside the protocols` : "Optional: PubMed, guidelines, FDA labels, NCBI Gene, CPIC, ClinVar",
+    items: external,
   });
   nodes.push({
     key: "answer",

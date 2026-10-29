@@ -207,8 +207,8 @@ async function forwardAdkEvents(upstream: ReadableStream<Uint8Array>, send: (e: 
 /** Tool arguments for the trail: ids, pages and the query only, never page text. */
 function smallArgs(args?: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const k of ["protocol_id", "protocol_ids", "start_page", "end_page", "query", "hospital", "include_subprotocols", "max_results"]) {
-    if (args && k in args) out[k] = k === "query" ? String(args[k]).slice(0, 200) : args[k];
+  for (const k of ["protocol_id", "protocol_ids", "start_page", "end_page", "query", "hospital", "include_subprotocols", "max_results", "drug", "request", "symbol", "gene"]) {
+    if (args && k in args) out[k] = k === "query" ? String(args[k]).slice(0, 200) : k === "request" ? String(args[k]).slice(0, 80) : args[k];
   }
   return out;
 }
@@ -238,6 +238,16 @@ function summarise(name: string | undefined, response?: Record<string, unknown>)
       return { protocol_id: r.protocol_id, protocol: r.protocol, from: r.from, to: r.to, total_pages: r.total_pages };
     case "search_pubmed":
       return { query: typeof r.query === "string" ? r.query.slice(0, 200) : undefined, n: Array.isArray(r.results) ? r.results.length : typeof r.n === "number" ? r.n : 0 };
+    case "get_drug_label":
+      return { drug: typeof r.drug === "string" ? r.drug.slice(0, 80) : undefined, found: r.found === true || (r.found === undefined && !r.error) };
+    case "web_evidence":
+      return { request: typeof r.request === "string" ? r.request.slice(0, 80) : undefined };
+    case "get_gene_info":
+      return { symbol: typeof r.symbol === "string" ? r.symbol.slice(0, 40) : undefined, found: r.found === true || (r.found === undefined && !r.error) };
+    case "get_pharmacogenomics":
+      return { query: typeof r.query === "string" ? r.query.slice(0, 120) : undefined, n: Array.isArray(r.pairs) ? r.pairs.length : typeof r.n === "number" ? r.n : 0 };
+    case "search_clinvar":
+      return { query: typeof r.query === "string" ? r.query.slice(0, 120) : undefined, n: Array.isArray(r.records) ? r.records.length : typeof r.n === "number" ? r.n : 0 };
     default:
       return {};
   }
@@ -250,6 +260,11 @@ const TOOL_STATUS: Record<string, string> = {
   search_pages: "Searching protocol pages…",
   read_pages: "Reading the cited pages…",
   search_pubmed: "Consulting PubMed (external evidence)…",
+  get_drug_label: "Checking the FDA drug label…",
+  web_evidence: "Searching the web for guidelines…",
+  get_gene_info: "Looking up the gene (NCBI)…",
+  get_pharmacogenomics: "Checking pharmacogenomic guidance (CPIC)…",
+  search_clinvar: "Checking ClinVar…",
 };
 function statusFor(tool?: string): string {
   return (tool && TOOL_STATUS[tool]) || `Searching protocols… (${tool ?? "tool"})`;

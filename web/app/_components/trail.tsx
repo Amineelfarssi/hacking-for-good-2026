@@ -40,10 +40,10 @@ export function Trail({ events, streaming, durationMs, onOpenPage }: Props) {
               {trail.protocols.map((p) => (
                 <ProtocolRow key={p.id} p={p} currentKey={trail.currentKey} onOpenPage={onOpenPage} />
               ))}
-              {trail.pubmed && (
+              {trail.external.length > 0 && (
                 <li className="flex items-start">
-                  <Node current={trail.currentKey === "pubmed"} pending={!trail.pubmed.done} title={trail.pubmed.query} className="shrink-0 border-ink-faint/50 bg-white text-ink-soft">
-                    External evidence consulted (PubMed: {trail.pubmed.done ? `${trail.pubmed.n} results` : "…"})
+                  <Node current={trail.currentKey === "external"} pending={trail.external.some((x) => !x.done)} className="shrink-0 border-ink-faint/50 bg-white text-ink-soft">
+                    External evidence consulted ({trail.external.map((x) => (x.done ? x.label : `${x.label}…`)).join(" · ")})
                   </Node>
                 </li>
               )}

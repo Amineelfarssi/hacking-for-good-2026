@@ -12,6 +12,7 @@ import { SourcesPanel } from "./sources-panel";
 import { ChatPanel } from "./chat-panel";
 import { SourceViewer } from "./source-viewer";
 import { AdminPanel } from "./admin-panel";
+import { UploadDocumentDialog } from "./upload-document-dialog";
 import type { ViewerTarget } from "./types";
 
 const DEFAULT_HOSPITAL = "UZG";
@@ -27,6 +28,7 @@ export function AppShell() {
   const [sourcesOpen, setSourcesOpen] = useState(true);
   const [viewerOpen, setViewerOpen] = useState(true);
   const [flowSignal, setFlowSignal] = useState(0);
+  const [uploadOpen, setUploadOpen] = useState(false);
   // Opening a page always reveals the viewer; Escape hides it.
   const setViewer = useCallback((t: ViewerTarget) => {
     setViewerState(t);
@@ -150,6 +152,8 @@ export function AppShell() {
         </Badge>
       </header>
 
+      <UploadDocumentDialog open={uploadOpen} onOpenChange={setUploadOpen} hospital={hospital} onUploaded={loadProtocols} />
+
       <Tabs defaultValue="assistant" className="flex min-h-0 flex-1 flex-col">
         <TabsList variant="underline" className="h-9 shrink-0 px-4">
           <TabsTrigger value="assistant" className="pb-1.5 pt-1">Assistant</TabsTrigger>
@@ -171,7 +175,7 @@ export function AppShell() {
                 masters={masters}
                 subs={subs}
                 locals={locals}
-                onUploaded={loadProtocols}
+                onRequestUpload={() => setUploadOpen(true)}
                 totalMasters={(data?.protocols ?? []).filter((p) => p.kind === "master").length}
                 selected={selected}
                 onSelectedChange={setSelected}
@@ -192,6 +196,7 @@ export function AppShell() {
                 onOpenPage={openPage}
                 onNewConversation={newConversation}
                 flowSignal={flowSignal}
+                onRequestUpload={() => setUploadOpen(true)}
               />
             </section>
             <section className="min-h-0 min-w-0">

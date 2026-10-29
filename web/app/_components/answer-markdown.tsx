@@ -6,7 +6,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { linkifyCitations, type Citation } from "@/lib/citations";
-import { PubMedChip } from "./pubmed-chip";
+import { ExternalChip } from "./pubmed-chip";
 import { unwrapTextMath } from "@/lib/math";
 import { CitationChip } from "./citation-chip";
 
@@ -19,7 +19,7 @@ type Props = {
 
 /** Streamed assistant text as markdown; citations become chips that open the source viewer; `$…$` renders as math. */
 export function AnswerMarkdown({ text, onOpenCitation, inline }: Props) {
-  const { markdown, citations } = useMemo(() => linkifyCitations(unwrapTextMath(text)), [text]);
+  const { markdown, citations, externals } = useMemo(() => linkifyCitations(unwrapTextMath(text)), [text]);
   const Wrapper = inline ? "span" : "div";
   return (
     <Wrapper className={inline ? "answer-md-inline" : "answer-md"}>
@@ -27,7 +27,7 @@ export function AnswerMarkdown({ text, onOpenCitation, inline }: Props) {
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, { output: "html", throwOnError: false }]]}
         // react-markdown drops unknown URL schemes; keep our internal cite: links.
-        urlTransform={(url) => (url.startsWith("cite:") || url.startsWith("pubmed:") ? url : defaultUrlTransform(url))}
+        urlTransform={(url) => (url.startsWith("cite:") || url.startsWith("ext:") ? url : defaultUrlTransform(url))}
         components={{
           ...(inline ? { p: ({ children }) => <span>{children}</span> } : {}),
           a: ({ href, children }) => {
@@ -35,9 +35,9 @@ export function AnswerMarkdown({ text, onOpenCitation, inline }: Props) {
               const c = citations[Number(href.slice(5))];
               if (c) return <CitationChip citation={c} onClick={() => onOpenCitation(c)} />;
             }
-            if (href?.startsWith("pubmed:")) {
-              const [pmid, year] = href.slice(7).split(":");
-              return <PubMedChip pmid={pmid} year={year || undefined} />;
+            if (href?.startsWith("ext:")) {
+              const r = externals[Number(href.slice(4))];
+              if (r) return <ExternalChip r={r} />;
             }
             return (
               <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
