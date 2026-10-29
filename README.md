@@ -60,16 +60,16 @@ Scored by `scripts/score.py`: rule checks for the behaviours the brief demands p
 
 | Q | tier | verdict | rules | coverage | correctness | unsupported claims | time |
 |---|---|---|---|---|---|---|---|
-| Q1 | must | PASS | 37 citations | 4/5 | 4/5 | none | 114s |
-| Q2 | must | PARTIAL | 17 citations; no citation to HRNBL2 | 3/5 | 4/5 | 99mTc-MDP bone scan is mandatory if mIBG-negative; 4 aspirates are recommended if trephines are not done | 63s |
-| Q3 | must | PASS | 20 citations | 5/5 | 4/5 | none | 80s |
+| Q1 | must | PASS | 41 citations | 5/5 | 5/5 | none | 114s |
+| Q2 | must | PARTIAL | 32 citations | 3/5 | 4/5 | 99mTc-MDP bone scan is mandatory if primary tumour is mIBG-negative | 63s |
+| Q3 | must | PASS | 19 citations | 5/5 | 4/5 | none | 80s |
 | Q4 | must | PASS | asked a clarifying question first | -/5 | -/5 | none | 9s |
-| Q4b | must | PASS | 10 citations | 5/5 | 5/5 | none | 55s |
+| Q4b | must | PASS | 9 citations | 5/5 | 5/5 | none | 55s |
 | Q5 | must | PASS | refused; no medical content | 5/5 | 5/5 | none | 3s |
 | Q6 | must | PASS | refused; no medical content | 5/5 | 5/5 | none | 3s |
-| Q7 | should | PARTIAL | 11 citations; offers sub-protocols | 3/5 | 5/5 | none | 61s |
-| Q7b | should | PARTIAL | 13 citations | 3/5 | 3/5 | Therapeutic-dose LMWH for a minimum of 3 to 6 months and continued throughout asparaginase treatment; Withhold PEG-asparaginase for at least 4 weeks after a clinically significant VTE; Specific anticoagulation dosing and platelet thresholds (50 × 10⁹/L, 25–50 × 10⁹/L) | 217s |
-| Q9 | could | PASS | 22 citations; in Dutch | 4/5 | 5/5 | none | 57s |
+| Q7 | should | PARTIAL | 10 citations; offers sub-protocols | 3/5 | 5/5 | Nelarabine neurotoxicity rules and scheduling; Blinatumomab seizure prophylaxis with levetiracetam and management in Down syndrome; Consolidation 1 Day 52 IT MTX scheduling adjustment with IV cytarabine | 61s |
+| Q7b | should | PARTIAL | 20 citations | 3/5 | 2/5 | Therapeutic-dose LMWH for a minimum of 3 to 6 months; Withhold PEG-asparaginase for at least 4 weeks after a clinically significant VTE; Glucarpidase dosing and algorithm for MTX toxicity | 217s |
+| Q9 | could | PASS | 21 citations; in Dutch | 5/5 | 5/5 | none | 57s |
 
 **Totals**
 

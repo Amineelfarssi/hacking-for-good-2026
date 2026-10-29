@@ -1,0 +1,8 @@
+# cp terraform.tfvars.example terraform.tfvars  (terraform.tfvars is git-ignored)
+project_id    = "qwiklabs-gcp-04-15e7fd834427"
+region        = "europe-west1"
+api_image_tag = "v1"
+web_image_tag = "v1"
+# corpus_bucket = "oncoprotocol-corpus-qwiklabs-gcp-04-15e7fd834427"  # default: <name>-corpus-<project_id>
+# public_invoker = false
+# web_invokers   = ["user:someone@example.com"]

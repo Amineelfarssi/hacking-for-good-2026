@@ -93,19 +93,27 @@ export function linkifyCitations(text: string): { markdown: string; citations: C
   return { markdown, citations };
 }
 
+/** A comparable key: version suffix dropped, lowercase, letters and digits only ("HR-NBL2 v5.1" and "HRNBL2" meet). */
 function norm(s: string): string {
-  return s.toLowerCase().replace(/\bv(?:ersion)?\s?\d[\w.]*$/i, "").replace(/[^a-z0-9]+/g, " ").trim();
+  return s
+    .toLowerCase()
+    .replace(/\bv(?:ersion)?\s?\d[\w.]*$/i, "")
+    .replace(/[^a-z0-9]+/g, "");
 }
 
-/** Match the document label of a citation to a protocol in the list, by short title (version stripped). */
+/** Match the document label of a citation to a protocol in the list: short title, then full title, by normalised key. */
 export function resolveCitation(doc: string, protocols: Protocol[]): Protocol | undefined {
   const target = norm(doc);
   if (!target) return undefined;
-  const exact = protocols.find((p) => norm(p.short_title) === target);
-  if (exact) return exact;
-  const prefix = protocols.find(
-    (p) => target.startsWith(norm(p.short_title)) || norm(p.short_title).startsWith(target),
-  );
-  if (prefix) return prefix;
-  return protocols.find((p) => norm(p.full_title).includes(target) || target.includes(norm(p.short_title)));
+  const byKey = (key: (p: Protocol) => string): Protocol | undefined =>
+    protocols.find((p) => key(p) === target) ??
+    protocols.find((p) => {
+      const k = key(p);
+      return k.length >= 3 && (target.startsWith(k) || k.startsWith(target));
+    }) ??
+    protocols.find((p) => {
+      const k = key(p);
+      return k.length >= 3 && (k.includes(target) || target.includes(k));
+    });
+  return byKey((p) => norm(p.short_title)) ?? byKey((p) => norm(p.full_title));
 }

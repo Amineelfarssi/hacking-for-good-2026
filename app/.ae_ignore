@@ -1,0 +1,5 @@
+# `adk deploy agent_engine` reads this: keep caches and local env files out of the Agent Engine package.
+__pycache__
+*.pyc
+.env
+.env.*

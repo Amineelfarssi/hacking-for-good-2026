@@ -1,0 +1,5 @@
+# Runtime dependencies of the agent alone (app/agent.py, app/tools.py, app/corpus.py) for `adk deploy agent_engine`.
+# The server routes (PDF rendering, uploads) are not deployed there; the full set is in pyproject.toml.
+google-adk[a2a]==2.13.0
+google-cloud-storage>=3.0
+python-dotenv>=1.0

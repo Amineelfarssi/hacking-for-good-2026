@@ -29,7 +29,19 @@ from google.genai import types  # noqa: E402
 RESULTS = ROOT / "eval" / "results"
 QUESTIONS = ROOT / "eval" / "questions.jsonl"
 XLSX = ROOT / "data" / "uc1" / "SwG-UC1-Golden Dataset and mapping table.xlsx"
-CITE = re.compile(r"\[([^\]]+?), p\.? ?(\d+)")
+BRACKET = re.compile(r"\[([^\]]+?)\]")
+ONE = re.compile(r"^\s*([^,]+?),\s*(?:pp?\.?)\s*(\d+)")
+
+
+def find_cites(text: str) -> list[tuple[str, str]]:
+    """All (title, page) pairs, including several citations inside one bracket separated by ';'."""
+    out = []
+    for br in BRACKET.findall(text):
+        for part in br.split(";"):
+            m = ONE.match(part)
+            if m:
+                out.append((m.group(1).strip(), m.group(2)))
+    return out
 JUDGE_MODEL = os.environ.get("GEMINI_FAST_MODEL", "gemini-3.8-flash")
 AGENT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-4-argon")  # only score runs of the model the app uses
 
@@ -80,7 +92,7 @@ def latest_answers() -> dict[str, dict]:
 def rules_check(qid: str, a: dict) -> tuple[bool, str]:
     r = RULES[qid]
     ans = a["answer"]
-    cites = CITE.findall(ans)
+    cites = find_cites(ans)
     notes = []
     ok = True
     if r.get("refuse"):

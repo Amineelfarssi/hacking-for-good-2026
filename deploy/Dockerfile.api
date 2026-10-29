@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1
+# OncoProtocol Assist, `api` service: the FastAPI app (ADK agent API + corpus routes) for Cloud Run.
+# Build from the repo root:  docker build --platform linux/amd64 -f deploy/Dockerfile.api -t api .
+# The corpus (~95 MB) is NOT in the image: scripts/fetch_corpus.sh copies it from $CORPUS_BUCKET at start.
+
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/srv/.venv \
+    PATH="/srv/.venv/bin:$PATH" \
+    CORPUS_DIR=/data/uc1 \
+    PORT=8080
+
+# uv (same major line as the dev machines) and a non-root user
+RUN pip install --no-cache-dir "uv==0.11.3" \
+    && useradd --create-home --uid 1000 app \
+    && mkdir -p /srv /data/uc1 \
+    && chown -R app:app /srv /data
+
+WORKDIR /srv
+
+# dependencies first (cached layer); the project itself is not a package (pyproject: package = false)
+COPY --chown=app:app pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
+
+# source: app/ (agent + server) and scripts/ (page extraction used by admin uploads, corpus fetch)
+COPY --chown=app:app app ./app
+COPY --chown=app:app scripts ./scripts
+RUN chmod +x scripts/fetch_corpus.sh
+
+USER app
+EXPOSE 8080
+
+# /srv stays writable so ADK keeps its sessions in /srv/.adk (SQLite) for the life of the instance.
+CMD ["bash", "-c", "scripts/fetch_corpus.sh && exec uvicorn app.server:api --host 0.0.0.0 --port ${PORT:-8080}"]

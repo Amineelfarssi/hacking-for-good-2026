@@ -1,0 +1,17 @@
+# Build context for deploy/Dockerfile.api (context = repo root). The corpus is not baked into the image:
+# the container copies it from the bucket at start (scripts/fetch_corpus.sh).
+.git
+.venv
+.adk
+.env
+.env.*
+!.env.example
+__pycache__
+*.pyc
+data/
+docs/
+eval/
+web/
+deploy/terraform/
+*_tmp*/
+.DS_Store

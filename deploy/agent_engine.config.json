@@ -1,0 +1,12 @@
+{
+  "display_name": "oncoprotocol-assist",
+  "env_vars": {
+    "GOOGLE_GENAI_USE_VERTEXAI": "TRUE",
+    "GOOGLE_CLOUD_PROJECT": "__PROJECT__",
+    "GOOGLE_CLOUD_LOCATION": "global",
+    "GEMINI_MODEL": "__MODEL__",
+    "GEMINI_FAST_MODEL": "__FAST_MODEL__",
+    "GEMINI_THINKING": "__THINKING__",
+    "CORPUS_DIR": "gs://__BUCKET__/uc1"
+  }
+}

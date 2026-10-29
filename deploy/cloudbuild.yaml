@@ -1,0 +1,16 @@
+# Cloud Build: both images from one submit (deploy/build.sh with MODE=cloudbuild). The build context is the
+# repo root; .dockerignore / web/.dockerignore keep the corpus, node_modules and env files out.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "deploy/Dockerfile.api", "-t", "${_REGISTRY}/api:${_TAG}", "."]
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "deploy/Dockerfile.web", "-t", "${_REGISTRY}/web:${_TAG}", "web"]
+images:
+  - "${_REGISTRY}/api:${_TAG}"
+  - "${_REGISTRY}/web:${_TAG}"
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 1800s
+substitutions:
+  _REGISTRY: europe-west1-docker.pkg.dev/PROJECT/oncoprotocol
+  _TAG: latest
