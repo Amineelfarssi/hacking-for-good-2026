@@ -1,0 +1,5 @@
+{"q": "Which documents do you have access to? List their titles.", "expect": "lists the indexed documents, no invented ones"}
+{"q": "What is the recommended dose of ondansetron for a child on a highly emetogenic regimen, and where does it say so?", "expect": "quoted dose with protocol name, version and page, or 'Not in the documents I have.'"}
+{"q": "Wat zijn de inclusiecriteria voor deze studie?", "expect": "answers in Dutch, quotes criteria with page citations"}
+{"q": "Is there anything about dose modification for hepatic toxicity?", "expect": "cites the section or says not in the documents"}
+{"q": "What is the capital of Belgium?", "expect": "refuses: not in the documents, no general knowledge"}
