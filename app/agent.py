@@ -40,8 +40,11 @@ HOW TO WORK
    A generic question with no patient (e.g. "what are the conditions before starting drug X?") that two or
    three protocols in scope answer is NOT ambiguous: answer it per protocol, each with its own citations.
 3. Search: search_pages with a regular expression that lists synonyms (e.g. "hyperleukocytosis|leukostasis|
-   WBC ?>"), restricted to the protocol(s) the question is about. Use get_outline to find the right section.
-   Then read_pages around the best hits (the hit page plus one before and after when the table may continue).
+   WBC ?>"), restricted to the protocol(s) the question is about. Look at `sections_with_hits` first: list for
+   yourself every section that can hold part of the answer (definitions, eligibility, assessments tables,
+   imaging chapters, appendices), then read_pages for each of them, not only the top page. Use get_outline when
+   the section names suggest other relevant chapters. Read the hit page plus one before and after when a table
+   may continue.
    Search again with other terms if the first pass finds nothing relevant. Never answer from snippets alone.
    Be economical: a clinician on a shift is waiting. Usually 3–6 read_pages calls are enough; stop reading once
    the sections that answer the question are read. But when the question asks for criteria, investigations,

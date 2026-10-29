@@ -122,7 +122,18 @@ def outline_of(p: Protocol, limit: int = 150) -> list[dict]:
     return out
 
 
-def search(query: str, protocols: list[Protocol], max_pages: int = 20, snippet: int = 220) -> dict:
+def section_of(p: Protocol, page_no: int) -> str:
+    """Heading of the outline entry that contains page_no (nearest entry starting at or before the page)."""
+    best = ""
+    for o in outline_of(p, limit=400):
+        if o["page"] <= page_no:
+            best = o["title"]
+        else:
+            break
+    return best
+
+
+def search(query: str, protocols: list[Protocol], max_pages: int = 24, snippet: int = 220) -> dict:
     try:
         rx = re.compile(query, re.I)
     except re.error:
@@ -136,13 +147,24 @@ def search(query: str, protocols: list[Protocol], max_pages: int = 20, snippet: 
             m = ms[0]
             s, e = max(0, m.start() - snippet), min(len(page["text"]), m.end() + snippet)
             hits.append({"protocol_id": p.id, "protocol": p.label, "page": page["n"], "matches": len(ms),
+                         "section": section_of(p, page["n"]),
                          "snippet": re.sub(r"\s+", " ", page["text"][s:e]).strip()})
     hits.sort(key=lambda h: (-h["matches"], h["protocol_id"], h["page"]))
-    per_protocol = {}
+    # the section view: every section that has hits, with its page span — so the model can plan reads that
+    # cover all relevant sections instead of stopping at the first good page
+    sections: dict[tuple, dict] = {}
     for h in hits:
-        per_protocol.setdefault(h["protocol"], 0)
-        per_protocol[h["protocol"]] += 1
-    return {"query": query, "pages_with_hits": len(hits), "hits_per_protocol": per_protocol, "top": hits[:max_pages]}
+        key = (h["protocol_id"], h["section"])
+        sec = sections.setdefault(key, {"protocol_id": h["protocol_id"], "protocol": h["protocol"],
+                                        "section": h["section"] or "(no heading)", "pages": [], "matches": 0})
+        sec["pages"].append(h["page"])
+        sec["matches"] += h["matches"]
+    section_list = sorted(sections.values(), key=lambda x: (-x["matches"], x["protocol_id"]))
+    for sec in section_list:
+        sec["pages"] = sorted(set(sec["pages"]))[:12]
+    return {"query": query, "pages_with_hits": len(hits),
+            "sections_with_hits": section_list[:30],
+            "top_pages": hits[:max_pages]}
 
 
 def read(p: Protocol, start: int, end: int, max_pages: int = 12) -> dict:

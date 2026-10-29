@@ -45,9 +45,10 @@ def get_outline(protocol_id: str) -> dict:
 def search_pages(query: str, tool_context: ToolContext, protocol_ids: list[str] | None = None,
                  include_subprotocols: bool = False) -> dict:
     """Keyword search over the page text of the protocols in scope. `query` is a case-insensitive regular
-    expression: separate synonyms with `|`, e.g. "hyperleukocytosis|leukostasis|WBC ?> ?100". Returns the pages
-    with hits (most matches first) and a snippet each. Narrow with `protocol_ids`; set
-    `include_subprotocols=True` only after the clinician agreed to a sub-protocol deep dive."""
+    expression: separate synonyms with `|`, e.g. "hyperleukocytosis|leukostasis|WBC ?> ?100". Returns
+    `sections_with_hits` (every section that matches, with its pages — use it to plan which sections to read so
+    nothing relevant is skipped) and `top_pages` (pages with the most matches, with a snippet each). Narrow with
+    `protocol_ids`; set `include_subprotocols=True` only after the clinician agreed to a sub-protocol deep dive."""
     _, pool = _scope(tool_context, include_subprotocols)
     if protocol_ids:
         pool = [p for p in pool if p.id in set(protocol_ids)]

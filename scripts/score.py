@@ -167,7 +167,11 @@ def main() -> None:
         if RULES[qid].get("no_judge"):  # first turn of a two-turn question: behaviour only
             j = {"coverage": "-", "correctness": "-", "unsupported_claims": [], "verdict": "pass" if rule_ok else "fail", "note": "behaviour check only"}
         else:
-            j = judge(ref["short"] or ref["full"], a["answer"], client)
+            reference = ref["short"] or ref["full"]
+            if qid == "Q4b":
+                reference = ("The clinician answered the clarifying question with 'AML on CHIP-AML22'; grade only the "
+                             "CHIP-AML22 part of this reference, ignore the ALLTogether1 branch.\n" + reference)
+            j = judge(reference, a["answer"], client)
         verdict = "PASS" if rule_ok and j.get("verdict") == "pass" else ("PARTIAL" if rule_ok or j.get("verdict") in ("pass", "partial") else "FAIL")
         rows.append((qid, a["tier"], verdict, rule_note, f"{j.get('coverage', '?')}/5", f"{j.get('correctness', '?')}/5",
                      "; ".join(j.get("unsupported_claims", [])[:3]) or "none", f"{a['secs']:.0f}s"))
