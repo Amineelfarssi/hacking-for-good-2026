@@ -52,7 +52,10 @@ async def main(only: set[str]) -> None:
         t0 = time.time()
         for attempt in range(3):  # the lab project has a small tokens-per-minute quota
             try:
-                answer, tools = await ask(runner, session.id, row["q"])
+                answer, tools = await asyncio.wait_for(ask(runner, session.id, row["q"]), timeout=240)
+                break
+            except asyncio.TimeoutError:
+                answer, tools = "ERROR: timed out after 240 s", []
                 break
             except Exception as e:  # noqa: BLE001
                 if "429" not in str(e) or attempt == 2:
