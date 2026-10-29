@@ -7,7 +7,7 @@ from google.adk.tools import ToolContext
 
 from app import corpus
 
-MAX_READS_PER_TURN = 8  # a clinician is waiting: after this many page reads the model must answer with what it has
+MAX_READS_PER_TURN = 6  # a clinician is waiting: after this many page reads the model must answer with what it has
 
 
 def _scope(tool_context: ToolContext, include_subprotocols: bool = False) -> tuple[str, list[corpus.Protocol]]:
