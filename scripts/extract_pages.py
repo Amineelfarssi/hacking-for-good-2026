@@ -5,12 +5,32 @@ Page numbers are 1-based PDF page indices, which is what citations and the viewe
 """
 
 import json
+import sys
 from pathlib import Path
 
 from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parent.parent / "data" / "uc1"
 PAGES = ROOT / "pages"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from app.layout_outline import layout_outline  # noqa: E402
+
+
+def best_outline(reader: PdfReader, pdf_path: Path, pages: list[dict]) -> tuple[list[dict], str]:
+    """PDF bookmarks when present; else the richer of the parsed table of contents and the layout outline."""
+    from app.corpus import Protocol, toc_of  # local import: corpus reads env at import time
+
+    bookmarks = outline_of(reader)
+    if len(bookmarks) >= 8:
+        return bookmarks, "bookmarks"
+    stub = Protocol(id="x", short_title="x", full_title="", kind="master", version=None, hospitals=[], file=None, pages=pages)
+    toc = toc_of(stub, limit=300)
+    layout = layout_outline(str(pdf_path))
+    if len(toc) >= 8 and len(toc) >= len(layout):
+        return [{**t, "depth": t["title"].split(" ")[0].count(".")} for t in toc], "toc"
+    if len(layout) >= 8:
+        return layout, "layout"
+    return bookmarks, "none"
 
 
 def clean(s: str) -> str:
@@ -47,12 +67,13 @@ def main() -> None:
         reader = PdfReader(ROOT / row["file"])
         pages = [{"n": i + 1, "text": clean(p.extract_text() or "")} for i, p in enumerate(reader.pages)]
         empty = sum(1 for p in pages if len(p["text"]) < 40)
+        outline, source = best_outline(reader, ROOT / row["file"], pages)
         doc = {"id": row["id"], "short_title": row["short_title"], "version": row.get("version"),
-               "pages": pages, "outline": outline_of(reader)}
+               "pages": pages, "outline": outline, "outline_source": source}
         (PAGES / f"{row['id']}.json").write_text(json.dumps(doc, ensure_ascii=False))
         row["pages"] = len(pages)
         total += len(pages)
-        print(f"{len(pages):4}p  {empty:3} near-empty  {len(doc['outline']):3} outline  {row['id']}")
+        print(f"{len(pages):4}p  {empty:3} near-empty  {len(doc['outline']):3} outline ({source:9})  {row['id']}")
     (ROOT / "manifest.jsonl").write_text("\n".join(json.dumps(x, ensure_ascii=False) for x in rows) + "\n")
     print("TOTAL pages:", total)
 
