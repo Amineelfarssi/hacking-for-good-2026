@@ -68,6 +68,12 @@ def main() -> None:
         pages = [{"n": i + 1, "text": clean(p.extract_text() or "")} for i, p in enumerate(reader.pages)]
         empty = sum(1 for p in pages if len(p["text"]) < 40)
         outline, source = best_outline(reader, ROOT / row["file"], pages)
+        previous = PAGES / f"{row['id']}.json"
+        if previous.exists():  # keep section summaries from scripts/build_section_summaries.py
+            old = {o["title"]: o.get("summary") for o in json.loads(previous.read_text()).get("outline", [])}
+            for o in outline:
+                if old.get(o["title"]):
+                    o["summary"] = old[o["title"]]
         doc = {"id": row["id"], "short_title": row["short_title"], "version": row.get("version"),
                "pages": pages, "outline": outline, "outline_source": source}
         (PAGES / f"{row['id']}.json").write_text(json.dumps(doc, ensure_ascii=False))
