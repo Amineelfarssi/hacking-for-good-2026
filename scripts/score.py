@@ -57,8 +57,9 @@ RULES = {
     "Q7": {"cites_min": 2, "protocols": ["ALLTogether1"], "offers_deep_dive": True},
     "Q7b": {"cites_min": 3, "protocols": ["Thrombosis"]},
     "Q9": {"cites_min": 3, "protocols": ["FaR-RMS"], "dutch": True},
+    "Q10": {"cites_min": 3, "protocols": ["ALLTogether1"], "external": True, "no_judge": True},
 }
-REFERENCE_ROW = {"Q1": 0, "Q2": 1, "Q3": 2, "Q4": 3, "Q4b": 3, "Q5": 4, "Q6": 5, "Q7": 6, "Q7b": 6, "Q9": 7}
+REFERENCE_ROW = {"Q1": 0, "Q2": 1, "Q3": 2, "Q4": 3, "Q4b": 3, "Q5": 4, "Q6": 5, "Q7": 6, "Q7b": 6, "Q9": 7, "Q10": 6}
 
 
 def load_references() -> list[dict]:
@@ -120,6 +121,10 @@ def rules_check(qid: str, a: dict) -> tuple[bool, str]:
         offered = re.search(r"sub-?protocol", ans, re.I) is not None
         ok = ok and offered
         notes.append("offers sub-protocols" if offered else "no sub-protocol offer")
+    if r.get("external"):
+        ext = "External evidence" in ans and re.search(r"\[(PubMed|Web|FDA label|CPIC|ClinVar|NCBI Gene)[: ]", ans) is not None
+        ok = ok and ext
+        notes.append("protocol block + labelled external block" if ext else "no labelled external block")
     if r.get("dutch"):
         dutch = len(re.findall(r"\b(je|jouw|behandeling|het|een|wordt|krijgt)\b", ans)) > 15
         ok = ok and dutch
