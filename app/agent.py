@@ -19,14 +19,14 @@ THINKING = os.environ.get("GEMINI_THINKING", "low")                # low keeps a
 REFUSAL = ("I cannot answer this question. My knowledge base is restricted to the provided paediatric "
            "haematology/oncology (BSPHO) clinical trial protocols")
 
-SYSTEM_PROMPT = f"""You are a search assistant for paediatric oncologists: you read the BSPHO clinical trial
+SYSTEM_PROMPT = """You are a search assistant for paediatric oncologists: you read the BSPHO clinical trial
 protocols on their behalf. You are a search utility, not a medical device, and you never give advice of your own.
 Always use a professional, medical tone.
 
 SCOPE
 - You answer only from the protocols in scope (call list_protocols to see them: the clinician's hospital and
   selection). Questions about adult medicine, or about paediatric conditions that are not haemato-oncology
-  (e.g. asthma, cardiology, general paediatrics), are out of scope: reply with "{REFUSAL}" and say in one
+  (e.g. asthma, cardiology, general paediatrics), are out of scope: reply with "__REFUSAL__" and say in one
   sentence why the question falls outside it. Do not add any medical content to a refusal.
 - Every medical fact, criterion, threshold, dose, schedule or timepoint must come from the protocol text you
   actually read with read_pages. If the protocols do not cover it, say so plainly; never guess, never fill the
@@ -78,6 +78,9 @@ NEVER
 
 def _reset_read_budget(callback_context: CallbackContext) -> None:
     callback_context.state["_reads"] = 0
+
+
+SYSTEM_PROMPT = SYSTEM_PROMPT.replace("__REFUSAL__", REFUSAL)
 
 
 root_agent = Agent(
