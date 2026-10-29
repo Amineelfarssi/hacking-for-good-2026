@@ -46,3 +46,11 @@ data/docs/     source PDFs (git-ignored)
 eval/          questions.jsonl
 docs/          USE-CASE.md (brief), DEMO.md (showcase script)
 ```
+
+## Verified in the Qwiklabs project (29 Oct, morning)
+
+Project `qwiklabs-gcp-04-15e7fd834427`, APIs enabled, bucket created. Gemini ids that answer:
+`gemini-2.5-flash` (europe-west1, europe-west4, global), `gemini-2.5-pro` (global),
+`gemini-3-flash-preview` (global), `gemini-3.1-flash-lite` (global). Default stays
+`gemini-2.5-flash` in `europe-west1`; to try the newer preview set `GEMINI_MODEL=gemini-3-flash-preview`
+and `GOOGLE_CLOUD_LOCATION=global` in `.env`.
